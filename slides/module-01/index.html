@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1: Meet Meridian — From RAG Prototype to Production</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8b90a8;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .deck { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    padding: 56px 72px;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide.active { display: flex; }
+
+  /* ── PROGRESS BAR ── */
+  .progress {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--border);
+    z-index: 100;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.3s ease;
+  }
+
+  /* ── SLIDE COUNTER ── */
+  .counter {
+    position: fixed;
+    bottom: 16px; right: 24px;
+    font-size: 12px;
+    color: var(--text-muted);
+    z-index: 100;
+    font-family: var(--mono);
+  }
+
+  /* ── NAVIGATION ── */
+  .nav-hint {
+    position: fixed;
+    bottom: 16px; left: 24px;
+    font-size: 11px;
+    color: var(--text-muted);
+    z-index: 100;
+  }
+
+  /* ── TYPOGRAPHY ── */
+  h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+  h3 { font-size: 1.3rem; font-weight: 600; }
+  p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
+  .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  /* ── ACCENT LINE ── */
+  .accent-line {
+    width: 48px; height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    margin: 16px 0 24px;
+  }
+
+  /* ── TAG / PILL ── */
+  .tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tag-blue { background: rgba(79,142,247,0.15); color: var(--accent); border: 1px solid rgba(79,142,247,0.3); }
+  .tag-green { background: rgba(62,207,142,0.12); color: var(--green); border: 1px solid rgba(62,207,142,0.25); }
+  .tag-purple { background: rgba(124,92,191,0.15); color: #a07be0; border: 1px solid rgba(124,92,191,0.3); }
+  .tag-orange { background: rgba(245,166,35,0.12); color: var(--orange); border: 1px solid rgba(245,166,35,0.25); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .card-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .card-grid-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ── AWS SERVICE CHIP ── */
+  .aws-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .aws-chip .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .aws-chip .dot.new { background: var(--green); }
+
+  /* ── STEP REVEALS ── */
+  [data-step] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  [data-step].step-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── SPEAKER NOTES ── */
+  .notes { display: none; }
+
+  /* ── TITLE SLIDE ── */
+  #s-title {
+    background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,0.08) 0%, transparent 60%),
+                var(--bg);
+    justify-content: center;
+  }
+  #s-title .module-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  #s-title h1 { max-width: 700px; }
+  #s-title .course-name {
+    margin-top: 24px;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+  }
+  #s-title .instructor {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  #s-title .instructor strong { color: var(--text); }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    justify-content: center;
+    align-items: flex-start;
+    background: var(--bg);
+  }
+  .section-divider .section-num {
+    font-size: 7rem;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  /* ── TWO COLUMN ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* ── PROBLEM LIST ── */
+  .problem-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  .problem-item .num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: var(--mono);
+    line-height: 1;
+    min-width: 28px;
+  }
+  .problem-item .content h3 { font-size: 0.95rem; margin-bottom: 4px; }
+  .problem-item .content p { font-size: 0.85rem; }
+  .problem-item .badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-family: var(--mono);
+    padding-top: 2px;
+  }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-diagram {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: rgba(79,142,247,0.08);
+    border: 1px solid rgba(79,142,247,0.25);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 0.95rem;
+    color: var(--text);
+    line-height: 1.6;
+    margin-top: 20px;
+  }
+
+  /* ── STAT BLOCK ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .stat-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-block .stat-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: var(--mono);
+    line-height: 1;
+  }
+  .stat-block .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  /* ── BEFORE/AFTER ── */
+  .before-after {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .before-after .side {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .before-after .side.after { border-color: rgba(79,142,247,0.4); }
+  .before-after .side-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .before-after .side-label.before-label { color: var(--text-muted); }
+  .before-after .side-label.after-label { color: var(--accent); }
+
+  /* ── LIST ── */
+  .bullet-list {
+    list-style: none;
+    margin-top: 16px;
+  }
+  .bullet-list li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before {
+    content: '→';
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .bullet-list li strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- ── SLIDE 1: TITLE ── -->
+  <div class="slide active" id="s-title">
+    <div class="module-label">Module 01 · Section 1: Foundations</div>
+    <h1>Meet Meridian</h1>
+    <h1 style="color: var(--text-muted); font-weight: 400;">Current stack, current pain,<br>where AI fits.</h1>
+    <div class="accent-line"></div>
+    <div class="course-name">From RAG Prototype to Production: AI Data Architecture on AWS</div>
+    <div class="instructor">Kate Gawron · <strong>AWS Ambassador &amp; Community Builder</strong></div>
+    <div class="notes">
+      FULL CAMERA for this slide. Introduce yourself and the course. Lead with the personal note about 20 years of databases, 7 years on AWS, and how the questions have shifted.
+
+      "I've spent twenty years working with databases. The questions used to be about indexes, replication, query plans. Seven years ago I moved into AWS full-time and the questions shifted again. Now they're about vector stores, RAG pipelines, context memory — the data layer that decides whether your AI system actually works in production, or just demos well.
+
+      This course is about those questions. Welcome to Module 1."
+
+      Then switch to screen share with circle overlay in top right.
+    </div>
+  </div>
+
+  <!-- ── SLIDE 2: AUDIENCE CONTRACT ── -->
+  <div class="slide" id="s-audience">
+    <div class="label">Before we start</div>
+    <h2>Who this course is for</h2>
+    <div class="accent-line"></div>
+    <div class="card-grid card-grid-2" style="margin-top: 8px;">
+      <div class="card">
+        <div style="color: var(--green); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px;">✓ You'll get a lot from this if you...</div>
+        <ul class="bullet-list">
+          <li>Know your way around <strong>VPCs, IAM, Lambda, and at least one AWS data service</strong></li>
+          <li>Are comfortable in <strong>Python</strong> and understand basic SQL</li>
+          <li>Know what a token, an embedding, and an LLM are — you just haven't built production systems with them</li>
+          <li>Are <strong>adding AI to an existing AWS stack</strong>, not learning AWS from scratch</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px;">↗ What you don't need</div>
+        <ul class="bullet-list">
+          <li>ML modelling experience — <strong>we are not training models</strong></li>
+          <li>Prior RAG or vector database experience</li>
+          <li>CDK or infrastructure-as-code expertise (we use CloudFormation)</li>
+        </ul>
+        <div class="callout" style="margin-top: 16px;">
+          This is a <strong>300–400 level</strong> course. If you're starting from scratch with AWS, come back when you've got the foundations.
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      Set the audience contract clearly and directly. Don't soften it. This course is for senior AWS practitioners and treating it as anything else wastes their time.
+
+      "This course is for AWS practitioners at 300 to 400 level. You already know your way around the core services. You understand what a token is, what an embedding is. What you don't need is ML modelling experience — we're not training models here. We're architecting the data systems that make models useful."
+    </div>
+  </div>
+
+  <!-- ── SLIDE 3: MEET MERIDIAN ── -->
+  <div class="slide" id="s-meridian">
+    <div class="label">The running narrative</div>
+    <h2>Meet Meridian Outdoor Co.</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div>
+        <p style="margin-bottom: 20px;">A mid-sized UK outdoor retailer. Healthy business, capable team, five years on AWS. Not a startup, not Amazon — the kind of company most of us actually work with.</p>
+        <div class="stat-grid" style="grid-template-columns: 1fr 1fr; margin-top: 0;">
+          <div class="stat-block">
+            <div class="stat-num">£80M</div>
+            <div class="stat-label">Annual revenue</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-num">40k</div>
+            <div class="stat-label">SKUs</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-num">500k</div>
+            <div class="stat-label">Active customers</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-num">12</div>
+            <div class="stat-label">UK &amp; Ireland stores</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div style="color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">Ridge Assist</div>
+          <p style="font-size: 0.9rem;">Customer-facing chat — web and app. Finds products, answers questions, remembers preferences, handles post-purchase queries.</p>
+        </div>
+        <div class="card">
+          <div style="color: var(--accent2); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; color: #a07be0;">Ridge Insight</div>
+          <p style="font-size: 0.9rem;">Internal tool for store staff, buyers, and customer service agents. One place to query product knowledge, customer history, and policy documents.</p>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      Introduce Meridian as a real-feeling company. Not a toy example, not Amazon. The kind of business your audience has worked with or worked for.
+
+      "Meet Meridian Outdoor Co. UK-based outdoor gear retailer. Eighty million in annual revenue. Forty thousand SKUs across camping, hiking, climbing, cycling. Twelve physical stores, a website, an app. Half a million active customers.
+
+      Meridian's CTO has been told — by the board, by customers, by the internal teams — that they need to add real AI capability. So they're building a platform called Ridge. Two products: Ridge Assist for customers, Ridge Insight for staff.
+
+      You're going to follow Meridian's team building it. Every concept in this course is grounded in their decisions."
+    </div>
+  </div>
+
+  <!-- ── SLIDE 4: CURRENT STACK ── -->
+  <div class="slide" id="s-stack">
+    <div class="label">What they already have</div>
+    <h2>Meridian's current AWS stack</h2>
+    <div class="accent-line"></div>
+    <div class="arch-diagram">
+      <svg viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto;">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#2e3350"/>
+          </marker>
+        </defs>
+
+        <!-- INTERNET -->
+        <rect x="10" y="140" width="80" height="36" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="50" y="163" text-anchor="middle" fill="#8b90a8" font-size="11" font-family="Inter,sans-serif">Internet</text>
+
+        <!-- CLOUDFRONT -->
+        <rect x="120" y="130" width="90" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="165" y="153" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">CloudFront</text>
+        <text x="165" y="172" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">+ ALB</text>
+
+        <!-- ECS -->
+        <rect x="245" y="120" width="90" height="72" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="290" y="152" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">ECS Fargate</text>
+        <text x="290" y="168" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">Monolith +</text>
+        <text x="290" y="181" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">microservices</text>
+
+        <!-- AURORA -->
+        <rect x="380" y="30" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="430" y="52" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">Aurora PG</text>
+        <text x="430" y="68" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">Products · Orders · Customers</text>
+
+        <!-- DYNAMODB -->
+        <rect x="380" y="105" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="430" y="127" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">DynamoDB</text>
+        <text x="430" y="143" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">Sessions · Carts</text>
+
+        <!-- OPENSEARCH -->
+        <rect x="380" y="178" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="430" y="200" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">OpenSearch</text>
+        <text x="430" y="216" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">Keyword search</text>
+
+        <!-- ELASTICACHE -->
+        <rect x="380" y="251" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="430" y="273" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">ElastiCache</text>
+        <text x="430" y="289" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">App caching</text>
+
+        <!-- KINESIS / S3 / GLUE -->
+        <rect x="525" y="180" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="575" y="202" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">Kinesis → S3</text>
+        <text x="575" y="218" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">Athena · Glue</text>
+
+        <!-- LAMBDA -->
+        <rect x="525" y="105" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="575" y="130" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">Lambda</text>
+        <text x="575" y="146" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">Event-driven</text>
+
+        <!-- CLOUDWATCH -->
+        <rect x="525" y="30" width="100" height="54" rx="6" fill="#1a1d27" stroke="#2e3350" stroke-width="1.5"/>
+        <text x="575" y="52" text-anchor="middle" fill="#e8eaf0" font-size="11" font-family="Inter,sans-serif" font-weight="600">CloudWatch</text>
+        <text x="575" y="68" text-anchor="middle" fill="#8b90a8" font-size="9" font-family="Inter,sans-serif">+ X-Ray</text>
+
+        <!-- PROBLEM LABEL -->
+        <rect x="680" y="155" width="200" height="76" rx="8" fill="rgba(224,92,92,0.08)" stroke="rgba(224,92,92,0.3)" stroke-width="1.5"/>
+        <text x="780" y="184" text-anchor="middle" fill="#e05c5c" font-size="12" font-family="Inter,sans-serif" font-weight="700">The gap</text>
+        <text x="780" y="202" text-anchor="middle" fill="#e8eaf0" font-size="10" font-family="Inter,sans-serif">Search doesn't understand intent.</text>
+        <text x="780" y="218" text-anchor="middle" fill="#e8eaf0" font-size="10" font-family="Inter,sans-serif">AI has nowhere to live.</text>
+
+        <!-- ARROWS -->
+        <line x1="90" y1="158" x2="118" y2="158" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="210" y1="158" x2="243" y2="158" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="335" y1="148" x2="378" y2="80" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="335" y1="155" x2="378" y2="133" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="335" y1="162" x2="378" y2="204" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="335" y1="168" x2="378" y2="272" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="480" y1="205" x2="523" y2="205" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="480" y1="133" x2="523" y2="133" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="480" y1="57" x2="523" y2="57" stroke="#2e3350" stroke-width="1.5" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+    <div class="notes">
+      Walk through the architecture diagram. The goal is "you've seen this before" — it's a normal, healthy AWS stack.
+
+      "Here's Meridian's current stack. ECS Fargate running the e-commerce monolith. Aurora PostgreSQL as the system of record. DynamoDB for sessions and carts. OpenSearch for keyword product search — tuned over years, works well for exact matches. ElastiCache for application caching. Kinesis into S3, Athena and Glue for analytics.
+
+      If you've been on AWS for any time at all, you've seen this. It works. Performance is fine, costs are predictable, the team know how to operate it.
+
+      But it's blind to intent. And that's where we start."
+    </div>
+  </div>
+
+  <!-- ── SLIDE 5: THE FIVE PROBLEMS ── -->
+  <div class="slide" id="s-problems">
+    <div class="label">Where AI fits</div>
+    <h2>Five problems Ridge solves</h2>
+    <div class="accent-line"></div>
+    <div style="display: grid; gap: 10px; margin-top: 4px;">
+      <div class="problem-item" data-step="1">
+        <div class="num">01</div>
+        <div class="content">
+          <h3>Search doesn't understand intent</h3>
+          <p>"A backpack for a week-long trek in Scotland" returns nothing — even though the product exists.</p>
+        </div>
+        <div class="badge">→ Section 1</div>
+      </div>
+      <div class="problem-item" data-step="2">
+        <div class="num">02</div>
+        <div class="content">
+          <h3>Recommendations cold-start badly</h3>
+          <p>New customers get generic suggestions for weeks. Niche tastes never surface the right products.</p>
+        </div>
+        <div class="badge">→ Section 2</div>
+      </div>
+      <div class="problem-item" data-step="3">
+        <div class="num">03</div>
+        <div class="content">
+          <h3>Agents juggle three separate systems</h3>
+          <p>Aurora for the order, Zendesk for the ticket, SharePoint for the warranty terms. Every call is a context switch.</p>
+        </div>
+        <div class="badge">→ Section 2</div>
+      </div>
+      <div class="problem-item" data-step="4">
+        <div class="num">04</div>
+        <div class="content">
+          <h3>Store staff lack in-the-moment product context</h3>
+          <p>"Which tent works for winter camping in Scotland?" — currently answered with a guess or a manager.</p>
+        </div>
+        <div class="badge">→ Section 2</div>
+      </div>
+      <div class="problem-item" data-step="5">
+        <div class="num">05</div>
+        <div class="content">
+          <h3>Returns and warranty queries swamp the contact centre</h3>
+          <p>The FAQ is buried five clicks deep. Customers call instead of self-serving.</p>
+        </div>
+        <div class="badge">→ Section 1</div>
+      </div>
+    </div>
+    <div class="notes">
+      Reveal each problem with a click. This is the section that sells the rest of the course. Each problem maps to specific later sections — the badge on the right shows learners where the payoff arrives.
+
+      "Five problems. One platform. That's Ridge. And each one of these maps directly to what you'll build over the next three hours."
+    </div>
+  </div>
+
+  <!-- ── SLIDE 6: THE RIDGE ARCHITECTURE ── -->
+  <div class="slide" id="s-ridge">
+    <div class="label">Where we're going</div>
+    <h2>The Ridge architecture</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="arch-diagram" style="padding: 20px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">Same Meridian stack +</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div class="aws-chip"><span class="dot new"></span>Amazon Bedrock</div>
+          <div class="aws-chip"><span class="dot new"></span>OpenSearch Serverless</div>
+          <div class="aws-chip"><span class="dot new"></span>Aurora + pgvector</div>
+          <div class="aws-chip"><span class="dot new"></span>Bedrock Knowledge Bases</div>
+          <div class="aws-chip"><span class="dot new"></span>Bedrock Agents</div>
+          <div class="aws-chip"><span class="dot new"></span>Amazon Neptune</div>
+          <div class="aws-chip"><span class="dot new"></span>Amazon Timestream</div>
+          <div class="aws-chip"><span class="dot new"></span>ElastiCache (extended)</div>
+        </div>
+        <div class="callout" style="margin-top: 16px; font-size: 0.85rem;">
+          Nothing gets ripped out. The AI layer <strong>extends</strong> what Meridian already has.
+        </div>
+      </div>
+      <div>
+        <p style="margin-bottom: 20px;">Every one of those services is a decision. Why OpenSearch Serverless and not pgvector? When does semantic caching pay for itself? How do you handle privacy when you're storing customer conversations?</p>
+        <p style="margin-bottom: 20px;">The course doesn't tell you "use this one". It gives you the decision frameworks to choose well in your own context.</p>
+        <div class="card">
+          <div style="color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">By the end of this course</div>
+          <ul class="bullet-list">
+            <li>You'll have <strong>built this architecture</strong> on your own AWS account</li>
+            <li>You'll have the <strong>decision frameworks</strong> to adapt it to your own systems</li>
+            <li>You'll understand the <strong>cost, failure modes, and trade-offs</strong> at every layer</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      Show the destination. Don't dwell on each service — just establish that we're adding a clear AI layer to an existing stack, not replacing anything.
+
+      "Here's where we're going. Same Meridian stack underneath. Same Aurora, same DynamoDB, same Lambda. We're not ripping anything out. What we're adding is the AI layer. Every one of those services is a decision — and those decisions are what this course is about."
+    </div>
+  </div>
+
+  <!-- ── SLIDE 7: WHAT'S NEXT ── -->
+  <div class="slide" id="s-next">
+    <div class="label">Coming up</div>
+    <h2>Module 2: Embeddings on AWS</h2>
+    <div class="accent-line"></div>
+    <div class="card-grid card-grid-3" style="margin-top: 8px;">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">🔢</div>
+        <h3 style="font-size: 0.9rem; margin-bottom: 8px;">What embeddings are</h3>
+        <p style="font-size: 0.82rem;">And why they're fundamentally different from keyword indexes.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">⚖️</div>
+        <h3 style="font-size: 0.9rem; margin-bottom: 8px;">Titan, Cohere, open-source</h3>
+        <p style="font-size: 0.82rem;">Which model for which workload, and how to evaluate the trade-offs.</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 12px;">💰</div>
+        <h3 style="font-size: 0.9rem; margin-bottom: 8px;">Cost at scale</h3>
+        <p style="font-size: 0.82rem;">What 40,000 SKUs actually costs to embed — and what happens when they change.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top: 24px;">
+      Before you pick a vector store, you need to understand what you're putting into it. That's Module 2.
+    </div>
+    <div class="notes">
+      Sign off cleanly. Punchy, direct, no summary.
+
+      "Right. That's Meridian. That's where we're going. The rest of the course is how we get there.
+
+      Module 2, we start at the foundation. Embeddings. What they are, how to make them on AWS, which model to choose. See you there."
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- PROGRESS + COUNTER -->
+<div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="counter" id="counter">1 / 7</div>
+<div class="nav-hint">← → or click to navigate · S for notes</div>
+
+<!-- NOTES PANEL -->
+<div id="notes-panel" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#0d0f18; border-top:2px solid var(--accent); padding:20px 32px; max-height:35vh; overflow-y:auto; z-index:200; font-size:0.85rem; line-height:1.7; color:var(--text-muted);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <span style="font-weight:700; color:var(--text); font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase;">Speaker Notes</span>
+    <span style="font-size:0.75rem; color:var(--text-muted);">Press S to close</span>
+  </div>
+  <div id="notes-content"></div>
+</div>
+
+<script>
+const deck = {
+  slides: Array.from(document.querySelectorAll('.slide')),
+  cur: 0,
+
+  go(n) {
+    if (n < 0 || n >= this.slides.length) return;
+    // Reset steps on leaving
+    this.slides[this.cur].querySelectorAll('[data-step].step-visible')
+      .forEach(el => el.classList.remove('step-visible'));
+    this.slides[this.cur].classList.remove('active');
+    this.cur = n;
+    this.slides[this.cur].classList.add('active');
+    this.update();
+  },
+
+  next() {
+    const slide = this.slides[this.cur];
+    const hidden = slide.querySelectorAll('[data-step]:not(.step-visible)');
+    if (hidden.length > 0) {
+      const steps = Array.from(hidden).map(el => parseInt(el.dataset.step));
+      const nextStep = Math.min(...steps);
+      slide.querySelectorAll('[data-step="' + nextStep + '"]')
+        .forEach(el => el.classList.add('step-visible'));
+      return;
+    }
+    this.go(this.cur + 1);
+  },
+
+  prev() {
+    this.go(this.cur - 1);
+  },
+
+  update() {
+    const total = this.slides.length;
+    const cur = this.cur + 1;
+    document.getElementById('counter').textContent = cur + ' / ' + total;
+    document.getElementById('progress-fill').style.width = (cur / total * 100) + '%';
+    if (document.getElementById('notes-panel').style.display !== 'none') {
+      this.showNotes();
+    }
+  },
+
+  showNotes() {
+    const notes = this.slides[this.cur].querySelector('.notes');
+    document.getElementById('notes-content').textContent = notes ? notes.textContent.trim() : 'No notes for this slide.';
+  }
+};
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+  if (e.key === 's' || e.key === 'S') {
+    const panel = document.getElementById('notes-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    if (panel.style.display !== 'none') deck.showNotes();
+  }
+});
+
+document.querySelector('.deck').addEventListener('click', () => deck.next());
+
+deck.update();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+.pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# AWS credentials (never commit these)
+.env
+.env.*
+*.pem
+credentials
+
+# Data files (large, generated separately)
+data/*.parquet
+data/*.csv
+data/*.sql
+data/*.json
+
+# Keep the data directory itself
+!data/.gitkeep
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# CloudFormation packaged templates
+cloudformation/packaged-*.yaml
