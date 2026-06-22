@@ -536,17 +536,30 @@ def main() -> None:
     else:
         print("\nSkipping embeddings (--skip-embeddings)")
 
+    # --- Intentional drift ---
+    # ponytail: 250 products only in Aurora (not in OpenSearch, so search won't find them)
+    # 250 products only in OpenSearch (search finds them but detail page 404s from Aurora)
+    # This demonstrates the data consistency problem solved by zero-ETL later.
+    # Drift products are the last 500 in the dataset (positions 39500-39999)
+    aurora_only_start = len(products) - 500
+    opensearch_only_start = len(products) - 250
+
+    aurora_products = products[:opensearch_only_start]  # First 39750 go to Aurora
+    opensearch_products = products[:aurora_only_start] + products[opensearch_only_start:]  # First 39500 + last 250 go to OpenSearch
+
     # Seed Aurora
     if not args.skip_aurora:
         print("\nSeeding Aurora PostgreSQL...")
-        seed_aurora(rds_data, cluster_arn, secret_arn, products, embeddings)
+        print(f"  ({len(aurora_products):,} products — 250 intentionally excluded for drift demo)")
+        seed_aurora(rds_data, cluster_arn, secret_arn, aurora_products, embeddings)
     else:
         print("\nSkipping Aurora (--skip-aurora)")
 
     # Seed OpenSearch
     if not args.skip_opensearch and opensearch_endpoint:
         print("\nIndexing into OpenSearch Serverless...")
-        seed_opensearch(opensearch_endpoint, session, products, embeddings, region=args.region)
+        print(f"  ({len(opensearch_products):,} products — 250 intentionally excluded for drift demo)")
+        seed_opensearch(opensearch_endpoint, session, opensearch_products, embeddings, region=args.region)
     else:
         print("\nSkipping OpenSearch")
 

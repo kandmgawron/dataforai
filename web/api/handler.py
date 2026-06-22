@@ -2,7 +2,14 @@
 Meridian Outdoor Co. — API Lambda handler.
 
 Single function with path-based routing via API Gateway.
-Uses RDS Data API (Aurora PostgreSQL), DynamoDB, and S3.
+Uses RDS Data API (Aurora PostgreSQL), OpenSearch (keyword search),
+DynamoDB, and S3.
+
+Search architecture:
+- Product BROWSING/SEARCH goes through OpenSearch (BM25 keyword search)
+- Product DETAIL goes through Aurora (source of truth)
+- This intentionally creates drift: products may exist in one but not the other.
+  Zero-ETL integration resolves this in a later module.
 """
 
 import json
@@ -12,6 +19,9 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+import urllib.request
 
 # --- Config ---
 CLUSTER_ARN = os.environ.get("AURORA_CLUSTER_ARN", "")
@@ -19,10 +29,14 @@ SECRET_ARN = os.environ.get("AURORA_SECRET_ARN", "")
 DATABASE = os.environ.get("DATABASE_NAME", "meridian")
 CONVERSATIONS_TABLE = os.environ.get("CONVERSATIONS_TABLE", "meridian-conversations")
 POLICIES_BUCKET = os.environ.get("POLICIES_BUCKET", "")
+OPENSEARCH_ENDPOINT = os.environ.get("OPENSEARCH_ENDPOINT", "")
+OPENSEARCH_INDEX = os.environ.get("OPENSEARCH_INDEX", "products")
+AWS_REGION = os.environ.get("AWS_REGION", "eu-west-1")
 
 rds = boto3.client("rds-data")
 dynamodb = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
+session = boto3.Session()
 
 
 def handler(event, context):
@@ -71,6 +85,64 @@ def get_products(qs):
     limit = min(int(qs.get("limit", "40")), 100)
     offset = int(qs.get("offset", "0"))
 
+    # Use OpenSearch for browsing/search if configured
+    if OPENSEARCH_ENDPOINT:
+        return get_products_opensearch(search, category, colour, price_min, price_max, gender, limit, offset)
+
+    # Fallback: Aurora SQL (used before OpenSearch is seeded)
+    return get_products_aurora(search, category, colour, price_min, price_max, gender, limit, offset)
+
+
+def get_products_opensearch(search, category, colour, price_min, price_max, gender, limit, offset):
+    """Search products via OpenSearch BM25 keyword search."""
+    must = []
+    filter_clauses = []
+
+    if search:
+        must.append({"multi_match": {
+            "query": search,
+            "fields": ["name^3", "brand^2", "short_description", "long_description"],
+            "type": "best_fields"
+        }})
+    else:
+        must.append({"match_all": {}})
+
+    if category:
+        filter_clauses.append({"term": {"l1": category}})
+    if colour:
+        # ponytail: exact match on colour keyword — intentionally brittle
+        filter_clauses.append({"term": {"colours": colour}})
+    if price_min:
+        filter_clauses.append({"range": {"price_gbp": {"gte": float(price_min)}}})
+    if price_max:
+        filter_clauses.append({"range": {"price_gbp": {"lte": float(price_max)}}})
+    if gender:
+        filter_clauses.append({"term": {"gender": gender.lower()}})
+
+    query = {"bool": {"must": must}}
+    if filter_clauses:
+        query["bool"]["filter"] = filter_clauses
+
+    body = {
+        "query": query,
+        "size": limit,
+        "from": offset,
+        "_source": ["sku", "name", "brand", "l1", "price_gbp", "short_description", "stock_total", "in_stock"],
+        "sort": [{"name.keyword": "asc"}]
+    }
+
+    try:
+        result = opensearch_request("POST", f"/{OPENSEARCH_INDEX}/_search", body)
+        hits = result.get("hits", {}).get("hits", [])
+        products = [h["_source"] for h in hits]
+        return response(200, products)
+    except Exception as e:
+        # Fallback to Aurora on OpenSearch error
+        return get_products_aurora(search, category, colour, price_min, price_max, gender, limit, offset)
+
+
+def get_products_aurora(search, category, colour, price_min, price_max, gender, limit, offset):
+    """Fallback: search products via Aurora SQL LIKE."""
     sql = "SELECT sku, name, brand, l1, price_gbp, short_description, stock_total FROM products WHERE in_stock = true"
     params = []
 
@@ -81,9 +153,6 @@ def get_products(qs):
         sql += " AND l1 = :category"
         params.append({"name": "category", "value": {"stringValue": category}})
     if colour:
-        # ponytail: exact JSONB array contains — intentionally brittle.
-        # "red" won't match "fiery_red" in the array. This is the teaching point:
-        # traditional structured search fails when supplier data is inconsistent.
         sql += " AND attributes->'colours' @> :colour::jsonb"
         params.append({"name": "colour", "value": {"stringValue": json.dumps([colour])}})
     if price_min:
@@ -93,7 +162,6 @@ def get_products(qs):
         sql += " AND price_gbp <= :price_max"
         params.append({"name": "price_max", "value": {"doubleValue": float(price_max)}})
     if gender:
-        # ponytail: exact match on gender column — won't find "unisex" if stored as "Unisex"
         sql += " AND LOWER(gender) = :gender"
         params.append({"name": "gender", "value": {"stringValue": gender.lower()}})
 
@@ -352,3 +420,24 @@ def response(status_code, body):
         },
         "body": json.dumps(body, default=str),
     }
+
+
+# --- OpenSearch Serverless helper ---
+
+def opensearch_request(method, path, body=None):
+    """Make a signed request to OpenSearch Serverless (AOSS)."""
+    url = f"{OPENSEARCH_ENDPOINT}{path}"
+    data = json.dumps(body).encode() if body else None
+
+    credentials = session.get_credentials().get_frozen_credentials()
+    request = AWSRequest(method=method, url=url, data=data, headers={"Content-Type": "application/json"})
+    SigV4Auth(credentials, "aoss", AWS_REGION).add_auth(request)
+
+    req = urllib.request.Request(
+        url=request.url,
+        data=data,
+        headers=dict(request.headers),
+        method=method,
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())

@@ -93,6 +93,9 @@ Resources:
             Fn::ImportValue: !Sub 'meridian-ConversationsTableName-${Environment}'
           POLICIES_BUCKET:
             Fn::ImportValue: !Sub 'meridian-PolicyDocsBucketName-${Environment}'
+          OPENSEARCH_ENDPOINT:
+            Fn::ImportValue: !Sub 'meridian-OpenSearchCollectionEndpoint-${Environment}'
+          OPENSEARCH_INDEX: products
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
