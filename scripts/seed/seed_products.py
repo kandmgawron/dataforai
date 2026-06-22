@@ -52,7 +52,6 @@ AWS_REGION    = "eu-west-1"
 EMBED_MODEL   = "amazon.titan-embed-text-v2:0"
 EMBED_DIMS    = 1024
 STACK_BASE    = "meridian-base"
-STACK_VECTORS = "meridian-vectors"
 ENVIRONMENT   = "dev"
 
 # Aurora schema
@@ -479,7 +478,7 @@ def main() -> None:
     opensearch_endpoint = None
     if not args.skip_opensearch:
         try:
-            opensearch_endpoint = get_stack_output(cfn, STACK_VECTORS, "OpenSearchCollectionEndpoint")
+            opensearch_endpoint = get_stack_output(cfn, STACK_BASE, "OpenSearchCollectionEndpoint")
             print(f"  OpenSearch: {opensearch_endpoint}")
         except Exception as exc:
             print(f"  ⚠ Could not get vectors stack outputs: {exc}")

@@ -367,6 +367,10 @@ Resources:
                 Resource:
                   - 'arn:aws:bedrock:eu-west-1::foundation-model/*'
                   - !Sub 'arn:aws:bedrock:eu-west-1:${AWS::AccountId}:inference-profile/*'
+              - Sid: OpenSearchServerless
+                Effect: Allow
+                Action: 'aoss:*'
+                Resource: '*'
 
   NotebookRole:
     Type: AWS::IAM::Role
@@ -417,6 +421,10 @@ Resources:
               - Sid: CloudWatch
                 Effect: Allow
                 Action: cloudwatch:PutMetricData
+                Resource: '*'
+              - Sid: OpenSearchServerless
+                Effect: Allow
+                Action: 'aoss:*'
                 Resource: '*'
 
   # ---------------------------------------------------------------------------
@@ -753,6 +761,113 @@ Resources:
           Value: !Sub '${ProjectName}-memory-${Environment}'
 
   # ---------------------------------------------------------------------------
+  # OpenSearch Serverless (NextGen, scale-to-zero)
+  # ---------------------------------------------------------------------------
+
+  OpenSearchCollectionGroup:
+    Type: AWS::OpenSearchServerless::CollectionGroup
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}'
+      Description: !Sub 'Meridian product search and vector store (${Environment})'
+      Generation: NEXTGEN
+      StandbyReplicas: DISABLED
+      CapacityLimits:
+        MinIndexingCapacityInOcu: 0
+        MinSearchCapacityInOcu: 0
+        MaxIndexingCapacityInOcu: 4
+        MaxSearchCapacityInOcu: 4
+
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub '${ProjectName}-products-${Environment}'
+      Type: encryption
+      Policy: !Sub |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": ["collection/${ProjectName}-products-${Environment}"]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  OpenSearchNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub '${ProjectName}-products-net-${Environment}'
+      Type: network
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/${ProjectName}-products-${Environment}"]
+              },
+              {
+                "ResourceType": "dashboard",
+                "Resource": ["collection/${ProjectName}-products-${Environment}"]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  OpenSearchCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn:
+      - OpenSearchEncryptionPolicy
+      - OpenSearchNetworkPolicy
+    Properties:
+      Name: !Sub '${ProjectName}-products-${Environment}'
+      Type: VECTORSEARCH
+      Description: !Sub 'Meridian product catalogue — keyword and vector search (${Environment})'
+      CollectionGroupName: !Sub '${ProjectName}-${Environment}'
+
+  OpenSearchAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: OpenSearchCollection
+    Properties:
+      Name: !Sub '${ProjectName}-products-${Environment}'
+      Type: data
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "index",
+                "Resource": ["index/${ProjectName}-products-${Environment}/*"],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DescribeIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              },
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/${ProjectName}-products-${Environment}"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              }
+            ],
+            "Principal": [
+              "${NotebookRole.Arn}",
+              "${LambdaExecutionRole.Arn}",
+              "arn:aws:iam::${AWS::AccountId}:root"
+            ]
+          }
+        ]
+
+  # ---------------------------------------------------------------------------
   # CloudWatch Log Groups
   # ---------------------------------------------------------------------------
 
@@ -867,3 +982,13 @@ Outputs:
     Value: !GetAtt ElastiCacheCluster.PrimaryEndPoint.Address
     Export:
       Name: !Sub 'meridian-ElastiCacheEndpoint-${Environment}'
+
+  OpenSearchCollectionEndpoint:
+    Value: !GetAtt OpenSearchCollection.CollectionEndpoint
+    Export:
+      Name: !Sub 'meridian-OpenSearchCollectionEndpoint-${Environment}'
+
+  OpenSearchCollectionArn:
+    Value: !GetAtt OpenSearchCollection.Arn
+    Export:
+      Name: !Sub 'meridian-OpenSearchCollectionArn-${Environment}'
