@@ -43,3 +43,6 @@ cloudformation/packaged-*.yaml
 # Kiro files
 .kiro/
 CLAUDE.md
+
+# Internal tooling (data generation scripts, not for learners)
+scripts/data-generation/
