@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Meridian Outdoor Co. — Web application stack.
+  Ridge Assist (customer shop) and Ridge Insight (internal CRM)
+  with API Gateway and Lambda backend.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: meridian
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # S3 Buckets for static frontends
+  # ---------------------------------------------------------------------------
+
+  AssistBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-assist-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  AssistBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AssistBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${AssistBucket.Arn}/*'
+
+  InsightBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-insight-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  InsightBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref InsightBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${InsightBucket.Arn}/*'
+
+  # ---------------------------------------------------------------------------
+  # Lambda Function — API backend
+  # ---------------------------------------------------------------------------
+
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-api-${Environment}'
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        ZipFile: |
+          # Placeholder — replaced by make deploy-web upload
+          def handler(event, context):
+              return {"statusCode": 200, "body": "API not deployed yet"}
+      Role:
+        Fn::ImportValue: !Sub 'meridian-LambdaExecutionRoleArn-${Environment}'
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          AURORA_CLUSTER_ARN:
+            Fn::ImportValue: !Sub 'meridian-AuroraClusterArn-${Environment}'
+          AURORA_SECRET_ARN:
+            Fn::ImportValue: !Sub 'meridian-AuroraSecretArn-${Environment}'
+          DATABASE_NAME: meridian
+          CONVERSATIONS_TABLE:
+            Fn::ImportValue: !Sub 'meridian-ConversationsTableName-${Environment}'
+          POLICIES_BUCKET:
+            Fn::ImportValue: !Sub 'meridian-PolicyDocsBucketName-${Environment}'
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-api-${Environment}'
+      RetentionInDays: 7
+
+  # ---------------------------------------------------------------------------
+  # API Gateway (HTTP API)
+  # ---------------------------------------------------------------------------
+
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${ProjectName}-api-${Environment}'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ApiFunction.Arn
+      PayloadFormatVersion: '1.0'
+
+  ApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  ApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+Outputs:
+  ApiUrl:
+    Value: !GetAtt HttpApi.ApiEndpoint
+    Export:
+      Name: !Sub 'meridian-ApiUrl-${Environment}'
+
+  AssistUrl:
+    Value: !GetAtt AssistBucket.WebsiteURL
+    Export:
+      Name: !Sub 'meridian-AssistUrl-${Environment}'
+
+  InsightUrl:
+    Value: !GetAtt InsightBucket.WebsiteURL
+    Export:
+      Name: !Sub 'meridian-InsightUrl-${Environment}'
+
+  AssistBucketName:
+    Value: !Ref AssistBucket
+
+  InsightBucketName:
+    Value: !Ref InsightBucket
+
+  ApiFunctionName:
+    Value: !Ref ApiFunction

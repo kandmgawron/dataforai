@@ -39,7 +39,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 AWS_PROFILE = "ridge-course-dev"
-AWS_REGION   = "eu-west-2"
+AWS_REGION   = "eu-west-1"
 STACK_BASE   = "meridian-base"
 ENVIRONMENT  = "dev"
 BATCH_SIZE   = 25   # RDS Data API batch_execute_statement limit
@@ -95,7 +95,14 @@ def run_sql(rds_data, cluster_arn: str, secret_arn: str, statement: str, params=
     )
     if params:
         kwargs["parameters"] = params
-    return rds_data.execute_statement(**kwargs)
+    for attempt in range(6):
+        try:
+            return rds_data.execute_statement(**kwargs)
+        except ClientError as exc:
+            if "DatabaseResumingException" in str(exc) and attempt < 5:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
 
 
 def load_customers(data_dir: Path) -> list[dict]:
@@ -122,6 +129,18 @@ def pg_array(values: list) -> str:
     if not values:
         return "{}"
     return "{" + ",".join(f'"{v}"' for v in values) + "}"
+
+
+def _valid_str(val) -> str | None:
+    """Return string value or None if null/NaN."""
+    if val is None:
+        return None
+    if isinstance(val, float) and (val != val):  # NaN check
+        return None
+    s = str(val)
+    if s in ("", "nan", "None", "NaT"):
+        return None
+    return s
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +186,7 @@ INSERT INTO customers (
     CAST(:registration_date AS DATE), :segment, :loyalty_tier, :lifetime_value_gbp,
     :order_count, :avg_order_value_gbp,
     CAST(:last_purchase_date AS DATE), :days_since_purchase,
-    :favourite_categories, :preferred_store, :marketing_opt_in
+    CAST(:favourite_categories AS TEXT[]), :preferred_store, :marketing_opt_in
 )
 ON CONFLICT (customer_id) DO NOTHING;
 """.strip()
@@ -181,23 +200,23 @@ ON CONFLICT (customer_id) DO NOTHING;
                 fav_cats = []
 
         params = [
-            {"name": "customer_id",          "value": {"stringValue": c["customer_id"]}},
-            {"name": "first_name",            "value": {"stringValue": c.get("first_name", "")}},
-            {"name": "last_name",             "value": {"stringValue": c.get("last_name", "")}},
-            {"name": "email",                 "value": {"stringValue": c["email"]} if c.get("email") else {"isNull": True}},
-            {"name": "phone",                 "value": {"stringValue": c["phone"]} if c.get("phone") else {"isNull": True}},
-            {"name": "postcode",              "value": {"stringValue": c["postcode"]} if c.get("postcode") else {"isNull": True}},
-            {"name": "country",               "value": {"stringValue": c.get("country", "GB")}},
-            {"name": "registration_date",     "value": {"stringValue": str(c["registration_date"])} if c.get("registration_date") else {"isNull": True}},
-            {"name": "segment",               "value": {"stringValue": c["segment"]} if c.get("segment") else {"isNull": True}},
-            {"name": "loyalty_tier",          "value": {"stringValue": c["loyalty_tier"]} if c.get("loyalty_tier") else {"isNull": True}},
-            {"name": "lifetime_value_gbp",    "value": {"doubleValue": float(c.get("lifetime_value_gbp", 0))}},
-            {"name": "order_count",           "value": {"longValue": int(c.get("order_count", 0))}},
-            {"name": "avg_order_value_gbp",   "value": {"doubleValue": float(c.get("avg_order_value_gbp", 0))}},
-            {"name": "last_purchase_date",    "value": {"stringValue": str(c["last_purchase_date"])} if c.get("last_purchase_date") else {"isNull": True}},
-            {"name": "days_since_purchase",   "value": {"longValue": int(c["days_since_purchase"])} if c.get("days_since_purchase") is not None else {"isNull": True}},
+            {"name": "customer_id",          "value": {"stringValue": str(c["customer_id"])}},
+            {"name": "first_name",            "value": {"stringValue": str(c.get("first_name", ""))}},
+            {"name": "last_name",             "value": {"stringValue": str(c.get("last_name", ""))}},
+            {"name": "email",                 "value": {"stringValue": _valid_str(c.get("email"))} if _valid_str(c.get("email")) else {"isNull": True}},
+            {"name": "phone",                 "value": {"stringValue": _valid_str(c.get("phone"))} if _valid_str(c.get("phone")) else {"isNull": True}},
+            {"name": "postcode",              "value": {"stringValue": _valid_str(c.get("postcode"))} if _valid_str(c.get("postcode")) else {"isNull": True}},
+            {"name": "country",               "value": {"stringValue": str(c.get("country", "GB"))}},
+            {"name": "registration_date",     "value": {"stringValue": str(c["registration_date"])} if _valid_str(c.get("registration_date")) else {"isNull": True}},
+            {"name": "segment",               "value": {"stringValue": _valid_str(c.get("segment"))} if _valid_str(c.get("segment")) else {"isNull": True}},
+            {"name": "loyalty_tier",          "value": {"stringValue": _valid_str(c.get("loyalty_tier"))} if _valid_str(c.get("loyalty_tier")) else {"isNull": True}},
+            {"name": "lifetime_value_gbp",    "value": {"doubleValue": float(c.get("lifetime_value_gbp", 0) or 0)}},
+            {"name": "order_count",           "value": {"longValue": int(c.get("order_count", 0) or 0)}},
+            {"name": "avg_order_value_gbp",   "value": {"doubleValue": float(c.get("avg_order_value_gbp", 0) or 0)}},
+            {"name": "last_purchase_date",    "value": {"stringValue": str(c["last_purchase_date"])} if _valid_str(c.get("last_purchase_date")) else {"isNull": True}},
+            {"name": "days_since_purchase",   "value": {"longValue": int(c["days_since_purchase"])} if c.get("days_since_purchase") is not None and str(c["days_since_purchase"]) not in ("nan", "") else {"isNull": True}},
             {"name": "favourite_categories",  "value": {"stringValue": pg_array(fav_cats)}},
-            {"name": "preferred_store",       "value": {"stringValue": c["preferred_store"]} if c.get("preferred_store") else {"isNull": True}},
+            {"name": "preferred_store",       "value": {"stringValue": _valid_str(c.get("preferred_store"))} if _valid_str(c.get("preferred_store")) else {"isNull": True}},
             {"name": "marketing_opt_in",      "value": {"booleanValue": bool(c.get("marketing_opt_in", False))}},
         ]
         try:

@@ -48,8 +48,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 AWS_PROFILE   = "ridge-course-dev"
-AWS_REGION    = "eu-west-2"        # Where the stack is deployed
-BEDROCK_REGION = "eu-west-1"       # Where Bedrock Nova/Titan is available
+AWS_REGION    = "eu-west-1"
 EMBED_MODEL   = "amazon.titan-embed-text-v2:0"
 EMBED_DIMS    = 1024
 STACK_BASE    = "meridian-base"
@@ -171,7 +170,7 @@ def generate_embedding(bedrock_runtime, text: str, max_retries: int = 4) -> list
 
 def embed_text_for_product(p: dict) -> str:
     """Build the text to embed for a product."""
-    parts = [p.get("name", ""), p.get("l2", ""), p.get("brand", "")]
+    parts = [p.get("name", ""), p.get("category_l2") or p.get("l2", ""), p.get("brand", "")]
     if p.get("short_description"):
         parts.append(p["short_description"])
     elif p.get("long_description"):
@@ -227,40 +226,10 @@ def seed_aurora(rds_data, cluster_arn: str, secret_arn: str, products: list[dict
             print(f"  {existing:,} products already in Aurora. Skipping existing.")
 
     inserted = 0
-    skipped = 0
     errors = 0
-    batch_size = 50
+    batch_size = 25  # RDS Data API batch_execute_statement limit
 
-    for i in range(0, len(products), batch_size):
-        batch = products[i:i + batch_size]
-        for p in batch:
-            sku = p.get("sku", "")
-            embedding = embeddings.get(sku)
-            embedding_str = f"[{','.join(str(round(v, 6)) for v in embedding)}]" if embedding else None
-
-            attrs = p.get("attributes", {})
-            if isinstance(attrs, dict):
-                attrs_json = json.dumps(attrs)
-            else:
-                attrs_json = str(attrs)
-
-            activities = p.get("activities", [])
-            seasons = p.get("seasons", [])
-            if isinstance(activities, str):
-                try:
-                    activities = json.loads(activities)
-                except Exception:
-                    activities = []
-            if isinstance(seasons, str):
-                try:
-                    seasons = json.loads(seasons)
-                except Exception:
-                    seasons = []
-
-            pg_activities = "{" + ",".join(f'"{a}"' for a in activities) + "}"
-            pg_seasons    = "{" + ",".join(f'"{s}"' for s in seasons) + "}"
-
-            upsert_sql = """
+    upsert_sql = """
 INSERT INTO products (
     sku, name, l1, l2, l3, brand, price_gbp, sale_price_gbp, on_sale,
     weight_g, short_description, long_description, attributes,
@@ -268,42 +237,107 @@ INSERT INTO products (
 ) VALUES (
     :sku, :name, :l1, :l2, :l3, :brand, :price, :sale_price, :on_sale,
     :weight, :short_desc, :long_desc, CAST(:attrs AS JSONB),
-    :activities, :seasons, :in_stock, :stock_total,
+    CAST(:activities AS TEXT[]), CAST(:seasons AS TEXT[]), :in_stock, :stock_total,
     CAST(:embedding AS vector)
 )
 ON CONFLICT (sku) DO NOTHING;
 """.strip()
-            params = [
-                {"name": "sku",         "value": {"stringValue": sku}},
-                {"name": "name",        "value": {"stringValue": p.get("name", "")}},
-                {"name": "l1",          "value": {"stringValue": p.get("l1", "")} if p.get("l1") else {"isNull": True}},
-                {"name": "l2",          "value": {"stringValue": p.get("l2", "")} if p.get("l2") else {"isNull": True}},
-                {"name": "l3",          "value": {"stringValue": p.get("l3", "")} if p.get("l3") else {"isNull": True}},
-                {"name": "brand",       "value": {"stringValue": p.get("brand", "")} if p.get("brand") else {"isNull": True}},
-                {"name": "price",       "value": {"doubleValue": float(p.get("price_gbp", 0))}},
-                {"name": "sale_price",  "value": {"doubleValue": float(p.get("sale_price_gbp", 0))} if p.get("sale_price_gbp") else {"isNull": True}},
-                {"name": "on_sale",     "value": {"booleanValue": bool(p.get("on_sale", False))}},
-                {"name": "weight",      "value": {"longValue": int(p.get("weight_g", 0))} if p.get("weight_g") else {"isNull": True}},
-                {"name": "short_desc",  "value": {"stringValue": p.get("short_description", "")} if p.get("short_description") else {"isNull": True}},
-                {"name": "long_desc",   "value": {"stringValue": p.get("long_description", "")} if p.get("long_description") else {"isNull": True}},
-                {"name": "attrs",       "value": {"stringValue": attrs_json}},
-                {"name": "activities",  "value": {"stringValue": pg_activities}},
-                {"name": "seasons",     "value": {"stringValue": pg_seasons}},
-                {"name": "in_stock",    "value": {"booleanValue": bool(p.get("in_stock", True))}},
-                {"name": "stock_total", "value": {"longValue": int(p.get("stock_total", 0))}},
-                {"name": "embedding",   "value": {"stringValue": embedding_str} if embedding_str else {"isNull": True}},
-            ]
-            try:
-                sql(upsert_sql, params)
-                inserted += 1
-            except ClientError as exc:
-                errors += 1
-                if errors <= 5:
-                    print(f"  ⚠ Insert error for {sku}: {exc}", file=sys.stderr)
 
-        pct = (i + len(batch)) / len(products) * 100
-        print(f"  Aurora: {i + len(batch):>6,} / {len(products):,} ({pct:.0f}%)  "
-              f"inserted={inserted:,}  errors={errors}", end="\r")
+    def make_product_params(p):
+        sku = p.get("sku", "")
+        embedding = embeddings.get(sku)
+        embedding_str = f"[{','.join(str(round(v, 6)) for v in embedding)}]" if embedding else None
+
+        attrs = p.get("attributes", {})
+        if isinstance(attrs, dict):
+            attrs_json = json.dumps(attrs)
+        else:
+            attrs_json = str(attrs)
+
+        activities = p.get("activity_tags") or p.get("activities", [])
+        seasons = p.get("season") or p.get("seasons", [])
+        if isinstance(activities, str):
+            try:
+                activities = json.loads(activities)
+            except Exception:
+                activities = []
+        if isinstance(seasons, str):
+            try:
+                seasons = json.loads(seasons)
+            except Exception:
+                seasons = []
+
+        pg_activities = "{" + ",".join(f'"{a}"' for a in activities) + "}"
+        pg_seasons    = "{" + ",".join(f'"{s}"' for s in seasons) + "}"
+
+        # Handle NaN in sale_price
+        sale_price = p.get("sale_price_gbp")
+        has_sale_price = sale_price is not None and str(sale_price) not in ("nan", "")
+        try:
+            sale_price_val = float(sale_price) if has_sale_price else 0
+            if sale_price_val != sale_price_val:  # NaN check
+                has_sale_price = False
+        except (TypeError, ValueError):
+            has_sale_price = False
+
+        return [
+            {"name": "sku",         "value": {"stringValue": sku}},
+            {"name": "name",        "value": {"stringValue": p.get("name", "")}},
+            {"name": "l1",          "value": {"stringValue": p.get("category_l1") or p.get("l1", "")} if (p.get("category_l1") or p.get("l1")) else {"isNull": True}},
+            {"name": "l2",          "value": {"stringValue": p.get("category_l2") or p.get("l2", "")} if (p.get("category_l2") or p.get("l2")) else {"isNull": True}},
+            {"name": "l3",          "value": {"stringValue": p.get("category_l3") or p.get("l3", "")} if (p.get("category_l3") or p.get("l3")) else {"isNull": True}},
+            {"name": "brand",       "value": {"stringValue": p.get("brand", "")} if p.get("brand") else {"isNull": True}},
+            {"name": "price",       "value": {"doubleValue": float(p.get("price_gbp", 0))}},
+            {"name": "sale_price",  "value": {"doubleValue": sale_price_val} if has_sale_price else {"isNull": True}},
+            {"name": "on_sale",     "value": {"booleanValue": bool(p.get("on_sale", False))}},
+            {"name": "weight",      "value": {"longValue": int(p.get("weight_grams") or p.get("weight_g", 0) or 0)} if (p.get("weight_grams") or p.get("weight_g")) else {"isNull": True}},
+            {"name": "short_desc",  "value": {"stringValue": p.get("short_description", "")} if p.get("short_description") else {"isNull": True}},
+            {"name": "long_desc",   "value": {"stringValue": p.get("long_description", "")} if p.get("long_description") else {"isNull": True}},
+            {"name": "attrs",       "value": {"stringValue": attrs_json}},
+            {"name": "activities",  "value": {"stringValue": pg_activities}},
+            {"name": "seasons",     "value": {"stringValue": pg_seasons}},
+            {"name": "in_stock",    "value": {"booleanValue": bool(p.get("in_stock", p.get("is_active", True)))}},
+            {"name": "stock_total", "value": {"longValue": int(p.get("stock_total", p.get("total_stock", 0)) or 0)}},
+            {"name": "embedding",   "value": {"stringValue": embedding_str} if embedding_str else {"isNull": True}},
+        ]
+
+    start = time.time()
+    for batch_start in range(0, len(products), batch_size):
+        batch = products[batch_start:batch_start + batch_size]
+        param_sets = [make_product_params(p) for p in batch]
+
+        for attempt in range(3):
+            try:
+                rds_data.batch_execute_statement(
+                    resourceArn=cluster_arn,
+                    secretArn=secret_arn,
+                    database="meridian",
+                    sql=upsert_sql,
+                    parameterSets=param_sets,
+                )
+                inserted += len(batch)
+                break
+            except ClientError as exc:
+                code = str(exc)
+                if "ThrottlingException" in code and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                if "DatabaseResumingException" in code and attempt < 2:
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                errors += len(batch)
+                if errors <= batch_size * 3:
+                    print(f"\n  ⚠ Batch error at {batch_start}: {exc}", file=sys.stderr)
+                break
+
+        processed = batch_start + len(batch)
+        if processed % 2500 == 0 or processed >= len(products):
+            elapsed = time.time() - start
+            rate = processed / elapsed
+            eta = (len(products) - processed) / rate if rate > 0 else 0
+            print(f"  Aurora: {processed:>6,} / {len(products):,} ({processed/len(products)*100:.0f}%)  "
+                  f"inserted={inserted:,}  errors={errors}  "
+                  f"rate={rate:.0f}/s  eta={eta:.0f}s", end="\r")
 
     print(f"\n  Aurora seeding complete: {inserted:,} inserted, {errors} errors")
 
@@ -323,7 +357,8 @@ ON CONFLICT (sku) DO NOTHING;
 # ---------------------------------------------------------------------------
 
 def seed_opensearch(collection_endpoint: str, session, products: list[dict],
-                    embeddings: dict[str, list[float]], index_name: str = "products") -> int:
+                    embeddings: dict[str, list[float]], region: str = AWS_REGION,
+                    index_name: str = "products") -> int:
     """Index products into OpenSearch Serverless. Returns count indexed."""
     if not OPENSEARCH_AVAILABLE:
         print("  Skipping OpenSearch (opensearch-py not installed)")
@@ -334,7 +369,7 @@ def seed_opensearch(collection_endpoint: str, session, products: list[dict],
     awsauth = AWS4Auth(
         credentials.access_key,
         credentials.secret_key,
-        AWS_REGION,
+        region,
         "aoss",
         session_token=credentials.token,
     )
@@ -367,17 +402,17 @@ def seed_opensearch(collection_endpoint: str, session, products: list[dict],
         doc = {
             "sku":               sku,
             "name":              p.get("name", ""),
-            "l1":                p.get("l1", ""),
-            "l2":                p.get("l2", ""),
-            "l3":                p.get("l3", ""),
+            "l1":                p.get("category_l1") or p.get("l1", ""),
+            "l2":                p.get("category_l2") or p.get("l2", ""),
+            "l3":                p.get("category_l3") or p.get("l3", ""),
             "brand":             p.get("brand", ""),
             "price_gbp":         float(p.get("price_gbp", 0)),
             "on_sale":           bool(p.get("on_sale", False)),
             "short_description": p.get("short_description", ""),
             "long_description":  p.get("long_description", ""),
-            "activities":        p.get("activities", []),
-            "seasons":           p.get("seasons", []),
-            "in_stock":          bool(p.get("in_stock", True)),
+            "activities":        p.get("activity_tags") or p.get("activities", []),
+            "seasons":           p.get("season") or p.get("seasons", []),
+            "in_stock":          bool(p.get("is_active", p.get("in_stock", True))),
         }
         if embedding:
             doc["embedding"] = embedding
@@ -409,7 +444,6 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Seed Meridian product catalogue into Aurora + OpenSearch")
     p.add_argument("--profile",        default=AWS_PROFILE)
     p.add_argument("--region",         default=AWS_REGION)
-    p.add_argument("--bedrock-region", default=BEDROCK_REGION)
     p.add_argument("--data-dir",       default="data", help="Directory containing products_full_40000.parquet")
     p.add_argument("--environment",    default=ENVIRONMENT)
     p.add_argument("--skip-aurora",    action="store_true", help="Skip Aurora seeding")
@@ -429,9 +463,7 @@ def main() -> None:
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     cfn = session.client("cloudformation")
     rds_data = session.client("rds-data")
-    bedrock_runtime = boto3.Session(
-        profile_name=args.profile, region_name=args.bedrock_region
-    ).client("bedrock-runtime")
+    bedrock_runtime = session.client("bedrock-runtime")
 
     # Get stack outputs
     print("\nFetching stack outputs...")
@@ -515,7 +547,7 @@ def main() -> None:
     # Seed OpenSearch
     if not args.skip_opensearch and opensearch_endpoint:
         print("\nIndexing into OpenSearch Serverless...")
-        seed_opensearch(opensearch_endpoint, session, products, embeddings)
+        seed_opensearch(opensearch_endpoint, session, products, embeddings, region=args.region)
     else:
         print("\nSkipping OpenSearch")
 

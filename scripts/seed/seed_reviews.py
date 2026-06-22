@@ -40,7 +40,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 AWS_PROFILE  = "ridge-course-dev"
-AWS_REGION   = "eu-west-2"
+AWS_REGION   = "eu-west-1"
 STACK_BASE   = "meridian-base"
 ENVIRONMENT  = "dev"
 BATCH_SIZE   = 25   # rows per batch_execute_statement call
@@ -92,7 +92,14 @@ def run_sql(rds_data, cluster_arn: str, secret_arn: str, statement: str, params=
     )
     if params:
         kwargs["parameters"] = params
-    return rds_data.execute_statement(**kwargs)
+    for attempt in range(6):
+        try:
+            return rds_data.execute_statement(**kwargs)
+        except ClientError as exc:
+            if "DatabaseResumingException" in str(exc) and attempt < 5:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
 
 
 def load_reviews(data_dir: Path) -> list[dict]:

@@ -44,7 +44,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 AWS_PROFILE  = "ridge-course-dev"
-AWS_REGION   = "eu-west-2"
+AWS_REGION   = "eu-west-1"
 STACK_BASE   = "meridian-base"
 ENVIRONMENT  = "dev"
 BATCH_SIZE   = 25   # DynamoDB batch_write_item limit

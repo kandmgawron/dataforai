@@ -45,7 +45,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 AWS_PROFILE  = "ridge-course-dev"
-AWS_REGION   = "eu-west-2"
+AWS_REGION   = "eu-west-1"
 STACK_BASE   = "meridian-base"
 ENVIRONMENT  = "dev"
 S3_PREFIX    = "documents/"
@@ -90,7 +90,14 @@ def run_sql(rds_data, cluster_arn: str, secret_arn: str, statement: str, params=
     )
     if params:
         kwargs["parameters"] = params
-    return rds_data.execute_statement(**kwargs)
+    for attempt in range(6):
+        try:
+            return rds_data.execute_statement(**kwargs)
+        except ClientError as exc:
+            if "DatabaseResumingException" in str(exc) and attempt < 5:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
 
 
 def load_policy_metadata(data_dir: Path) -> list[dict]:
@@ -200,7 +207,7 @@ INSERT INTO policy_documents (
     doc_id, title, doc_type, applies_to, tags, s3_key,
     word_count, version, last_updated
 ) VALUES (
-    :doc_id, :title, :doc_type, :applies_to, :tags, :s3_key,
+    :doc_id, :title, :doc_type, :applies_to, CAST(:tags AS TEXT[]), :s3_key,
     :word_count, :version, CAST(:last_updated AS DATE)
 )
 ON CONFLICT (doc_id) DO UPDATE SET

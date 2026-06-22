@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ridge Insight — Meridian Outdoor Co.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1>Ridge Insight</h1>
+        <span>Internal CRM</span>
+      </div>
+      <nav aria-label="Main navigation">
+        <button class="nav-btn active" data-view="customers">Customers</button>
+        <button class="nav-btn" data-view="conversations">Conversations</button>
+        <button class="nav-btn" data-view="products">Products</button>
+        <button class="nav-btn" data-view="policies">Policies</button>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="content">
+      <!-- Customers view -->
+      <section id="view-customers" class="view">
+        <h2>Customer Lookup</h2>
+        <div class="search-row">
+          <input type="text" id="customer-search" placeholder="Search by name, email, or ID…" aria-label="Search customers">
+          <button id="customer-search-btn">Search</button>
+        </div>
+        <div id="customer-results"></div>
+        <div id="customer-detail" hidden></div>
+      </section>
+
+      <!-- Conversations view -->
+      <section id="view-conversations" class="view" hidden>
+        <h2>Conversations Queue</h2>
+        <p class="subtitle">Recent questions from Ridge Assist chat, awaiting staff response.</p>
+        <div id="conversations-list"></div>
+      </section>
+
+      <!-- Products view -->
+      <section id="view-products" class="view" hidden>
+        <h2>Product Search</h2>
+        <div class="search-row">
+          <input type="text" id="product-search" placeholder="Search products…" aria-label="Search products">
+          <button id="product-search-btn">Search</button>
+        </div>
+        <div id="product-results"></div>
+      </section>
+
+      <!-- Policies view -->
+      <section id="view-policies" class="view" hidden>
+        <h2>Policy Documents</h2>
+        <div id="policies-list"></div>
+        <div id="policy-detail" hidden></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

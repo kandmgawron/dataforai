@@ -1,10 +1,10 @@
 AWS_PROFILE   ?= ridge-course-dev
-AWS_REGION    ?= eu-west-2
-BEDROCK_REGION ?= eu-west-1
+AWS_REGION    ?= eu-west-1
 ENVIRONMENT   ?= dev
 PROJECT       ?= meridian
 
 STACK_BASE       = meridian-base
+STACK_WEB        = meridian-web
 STACK_VECTORS    = meridian-vectors
 STACK_KNOWLEDGE  = meridian-knowledge
 STACK_OPS        = meridian-ops
@@ -19,13 +19,14 @@ POLICY_BUCKET       := $(shell aws cloudformation describe-stacks --stack-name $
 NOTEBOOK_ROLE_ARN   := $(shell aws cloudformation describe-stacks --stack-name $(STACK_BASE) --query "Stacks[0].Outputs[?OutputKey=='NotebookRoleArn'].OutputValue" --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null)
 LAMBDA_ROLE_ARN     := $(shell aws cloudformation describe-stacks --stack-name $(STACK_BASE) --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArn'].OutputValue" --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null)
 
-.PHONY: deploy-base deploy-vectors deploy-knowledge deploy-ops destroy-all upload-data generate-data check-env help status seed-data seed-products seed-customers seed-reviews seed-conversations seed-policies
+.PHONY: deploy-base deploy-web deploy-vectors deploy-knowledge deploy-ops destroy-all upload-data generate-data check-env help status seed-data seed-products seed-customers seed-reviews seed-conversations seed-policies
 
 help:
 	@echo "Meridian course infrastructure"
 	@echo ""
 	@echo "Targets:"
 	@echo "  deploy-base        Deploy VPC, Aurora, S3, IAM, DynamoDB, ElastiCache"
+	@echo "  deploy-web         Deploy web frontends and API (requires deploy-base)"
 	@echo "  deploy-vectors     Deploy OpenSearch Serverless (requires deploy-base)"
 	@echo "  deploy-knowledge   Deploy Neptune, Bedrock KB, Agent (requires deploy-vectors)"
 	@echo "  deploy-ops         Deploy Timestream, Step Functions, dashboards (requires deploy-knowledge)"
@@ -62,11 +63,47 @@ deploy-base: check-env
 	@echo "Uploading data to S3..."
 	$(MAKE) upload-data
 	@echo ""
-	@echo "Base stack deployed. Next: make deploy-vectors"
+	@echo "Base stack deployed. Next: make deploy-web"
 	@$(MAKE) _print-outputs STACK=$(STACK_BASE)
 
+deploy-web: check-env
+	@echo "Deploying $(STACK_WEB)..."
+	aws cloudformation deploy \
+		--template-file $(CFN_DIR)/meridian-web.yaml \
+		--stack-name $(STACK_WEB) \
+		--capabilities CAPABILITY_NAMED_IAM \
+		--parameter-overrides ProjectName=$(PROJECT) Environment=$(ENVIRONMENT) \
+		--profile $(AWS_PROFILE) \
+		--region $(AWS_REGION) \
+		--no-fail-on-empty-changeset
+	@echo "Uploading frontends and API code..."
+	$(MAKE) upload-web
+	@echo ""
+	@echo "Web stack deployed."
+	@$(MAKE) _print-outputs STACK=$(STACK_WEB)
+
+upload-web: check-env
+	$(eval ASSIST_BUCKET := $(shell aws cloudformation describe-stacks --stack-name $(STACK_WEB) --query "Stacks[0].Outputs[?OutputKey=='AssistBucketName'].OutputValue" --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null))
+	$(eval INSIGHT_BUCKET := $(shell aws cloudformation describe-stacks --stack-name $(STACK_WEB) --query "Stacks[0].Outputs[?OutputKey=='InsightBucketName'].OutputValue" --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null))
+	$(eval API_FUNCTION := $(shell aws cloudformation describe-stacks --stack-name $(STACK_WEB) --query "Stacks[0].Outputs[?OutputKey=='ApiFunctionName'].OutputValue" --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null))
+	$(eval API_URL := $(shell aws cloudformation describe-stacks --stack-name $(STACK_WEB) --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null))
+	@echo "  Injecting API URL into frontends..."
+	@sed 's|window.RIDGE_API_BASE.*|window.RIDGE_API_BASE = "$(API_URL)";|' web/ridge-assist/app.js > /tmp/ridge-assist-app.js
+	@sed 's|window.RIDGE_API_BASE.*|window.RIDGE_API_BASE = "$(API_URL)";|' web/ridge-insight/app.js > /tmp/ridge-insight-app.js
+	@echo "  Uploading Ridge Assist to s3://$(ASSIST_BUCKET)/ ..."
+	@aws s3 sync web/ridge-assist/ s3://$(ASSIST_BUCKET)/ --exclude "app.js" --profile $(AWS_PROFILE) --region $(AWS_REGION)
+	@aws s3 cp /tmp/ridge-assist-app.js s3://$(ASSIST_BUCKET)/app.js --profile $(AWS_PROFILE) --region $(AWS_REGION)
+	@echo "  Uploading Ridge Insight to s3://$(INSIGHT_BUCKET)/ ..."
+	@aws s3 sync web/ridge-insight/ s3://$(INSIGHT_BUCKET)/ --exclude "app.js" --profile $(AWS_PROFILE) --region $(AWS_REGION)
+	@aws s3 cp /tmp/ridge-insight-app.js s3://$(INSIGHT_BUCKET)/app.js --profile $(AWS_PROFILE) --region $(AWS_REGION)
+	@echo "  Updating Lambda function code..."
+	@cd web/api && zip -q /tmp/meridian-api.zip handler.py
+	@aws lambda update-function-code --function-name $(API_FUNCTION) --zip-file fileb:///tmp/meridian-api.zip --profile $(AWS_PROFILE) --region $(AWS_REGION) > /dev/null
+	@rm -f /tmp/ridge-assist-app.js /tmp/ridge-insight-app.js /tmp/meridian-api.zip
+	@echo "  Done."
+
 deploy-vectors: check-env
-	@echo "Deploying $(STACK_VECTORS) to $(BEDROCK_REGION) (OpenSearch Serverless lives alongside Bedrock)..."
+	@echo "Deploying $(STACK_VECTORS)..."
 	aws cloudformation deploy \
 		--template-file $(CFN_DIR)/meridian-vectors.yaml \
 		--stack-name $(STACK_VECTORS) \
@@ -77,12 +114,12 @@ deploy-vectors: check-env
 			NotebookRoleArn=$(NOTEBOOK_ROLE_ARN) \
 			LambdaExecutionRoleArn=$(LAMBDA_ROLE_ARN) \
 		--profile $(AWS_PROFILE) \
-		--region $(BEDROCK_REGION) \
+		--region $(AWS_REGION) \
 		--no-fail-on-empty-changeset
 	@echo ""
 	@echo "Vectors stack deployed. Run the seed script next:"
 	@echo "  python scripts/seed/seed_products.py"
-	@$(MAKE) _print-outputs STACK=$(STACK_VECTORS) REGION=$(BEDROCK_REGION)
+	@$(MAKE) _print-outputs STACK=$(STACK_VECTORS)
 
 deploy-knowledge: check-env
 	@echo "Deploying $(STACK_KNOWLEDGE)..."
@@ -134,8 +171,10 @@ destroy-all: check-env
 		aws cloudformation wait stack-delete-complete --stack-name $(STACK_OPS) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; echo "$(STACK_OPS) deleted."
 	-aws cloudformation delete-stack --stack-name $(STACK_KNOWLEDGE) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; \
 		aws cloudformation wait stack-delete-complete --stack-name $(STACK_KNOWLEDGE) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; echo "$(STACK_KNOWLEDGE) deleted."
-	-aws cloudformation delete-stack --stack-name $(STACK_VECTORS) --profile $(AWS_PROFILE) --region $(BEDROCK_REGION) 2>/dev/null; \
-		aws cloudformation wait stack-delete-complete --stack-name $(STACK_VECTORS) --profile $(AWS_PROFILE) --region $(BEDROCK_REGION) 2>/dev/null; echo "$(STACK_VECTORS) deleted."
+	-aws cloudformation delete-stack --stack-name $(STACK_VECTORS) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; \
+		aws cloudformation wait stack-delete-complete --stack-name $(STACK_VECTORS) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; echo "$(STACK_VECTORS) deleted."
+	-aws cloudformation delete-stack --stack-name $(STACK_WEB) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; \
+		aws cloudformation wait stack-delete-complete --stack-name $(STACK_WEB) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; echo "$(STACK_WEB) deleted."
 	-aws cloudformation delete-stack --stack-name $(STACK_BASE) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; \
 		aws cloudformation wait stack-delete-complete --stack-name $(STACK_BASE) --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null; echo "$(STACK_BASE) deleted."
 	@echo "All stacks destroyed."
@@ -147,7 +186,8 @@ generate-data:
 status: check-env
 	@echo "Stack status:"
 	@printf "  %-25s %s\n" "$(STACK_BASE)" "$$(aws cloudformation describe-stacks --stack-name $(STACK_BASE) --query 'Stacks[0].StackStatus' --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null || echo 'NOT DEPLOYED')"
-	@printf "  %-25s %s\n" "$(STACK_VECTORS)" "$$(aws cloudformation describe-stacks --stack-name $(STACK_VECTORS) --query 'Stacks[0].StackStatus' --output text --profile $(AWS_PROFILE) --region $(BEDROCK_REGION) 2>/dev/null || echo 'NOT DEPLOYED')"
+	@printf "  %-25s %s\n" "$(STACK_WEB)" "$$(aws cloudformation describe-stacks --stack-name $(STACK_WEB) --query 'Stacks[0].StackStatus' --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null || echo 'NOT DEPLOYED')"
+	@printf "  %-25s %s\n" "$(STACK_VECTORS)" "$$(aws cloudformation describe-stacks --stack-name $(STACK_VECTORS) --query 'Stacks[0].StackStatus' --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null || echo 'NOT DEPLOYED')"
 	@printf "  %-25s %s\n" "$(STACK_KNOWLEDGE)" "$$(aws cloudformation describe-stacks --stack-name $(STACK_KNOWLEDGE) --query 'Stacks[0].StackStatus' --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null || echo 'NOT DEPLOYED')"
 	@printf "  %-25s %s\n" "$(STACK_OPS)" "$$(aws cloudformation describe-stacks --stack-name $(STACK_OPS) --query 'Stacks[0].StackStatus' --output text --profile $(AWS_PROFILE) --region $(AWS_REGION) 2>/dev/null || echo 'NOT DEPLOYED')"
 
@@ -155,7 +195,7 @@ seed-data: seed-products seed-customers seed-reviews seed-conversations seed-pol
 	@echo "All seed scripts complete."
 
 seed-products: check-env
-	python scripts/seed/seed_products.py --profile $(AWS_PROFILE) --region $(AWS_REGION) --bedrock-region $(BEDROCK_REGION) --data-dir $(DATA_DIR)
+	python scripts/seed/seed_products.py --profile $(AWS_PROFILE) --region $(AWS_REGION) --data-dir $(DATA_DIR) --skip-embeddings --skip-opensearch
 
 seed-customers: check-env
 	python scripts/seed/seed_customers.py --profile $(AWS_PROFILE) --region $(AWS_REGION) --data-dir $(DATA_DIR)

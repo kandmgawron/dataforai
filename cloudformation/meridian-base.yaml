@@ -48,7 +48,7 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.0.0/24
-      AvailabilityZone: eu-west-2a
+      AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -59,7 +59,7 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: eu-west-2b
+      AvailabilityZone: !Select [1, !GetAZs ""]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -72,7 +72,7 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.10.0/24
-      AvailabilityZone: eu-west-2a
+      AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -83,7 +83,7 @@ Resources:
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.11.0/24
-      AvailabilityZone: eu-west-2b
+      AvailabilityZone: !Select [1, !GetAZs ""]
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -218,14 +218,14 @@ Resources:
   ElastiCacheSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for ElastiCache Redis
+      GroupDescription: Security group for ElastiCache Valkey
       VpcId: !Ref Vpc
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 6379
           ToPort: 6379
           SourceSecurityGroupId: !Ref LambdaSG
-          Description: Allow Redis from Lambda
+          Description: Allow Valkey from Lambda
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-elasticache-sg-${Environment}'
@@ -345,6 +345,22 @@ Resources:
                 Effect: Allow
                 Action: 'rds-data:*'
                 Resource: '*'
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt SessionsTable.Arn
+                  - !Sub '${SessionsTable.Arn}/index/*'
+                  - !GetAtt ConversationsTable.Arn
+                  - !Sub '${ConversationsTable.Arn}/index/*'
+                  - !GetAtt MemoryTable.Arn
+                  - !Sub '${MemoryTable.Arn}/index/*'
               - Sid: BedrockInvoke
                 Effect: Allow
                 Action: bedrock:InvokeModel
@@ -410,7 +426,7 @@ Resources:
   DataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'meridian-data-${AWS::AccountId}-${Environment}'
+      BucketName: !Sub 'meridian-data-${AWS::AccountId}-${AWS::Region}-${Environment}'
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -431,7 +447,7 @@ Resources:
   PolicyDocsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'meridian-policies-${AWS::AccountId}-${Environment}'
+      BucketName: !Sub 'meridian-policies-${AWS::AccountId}-${AWS::Region}-${Environment}'
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -452,7 +468,7 @@ Resources:
   ExportsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'meridian-exports-${AWS::AccountId}-${Environment}'
+      BucketName: !Sub 'meridian-exports-${AWS::AccountId}-${AWS::Region}-${Environment}'
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -635,31 +651,34 @@ Resources:
           Value: !Sub '${ProjectName}-aurora-instance-${Environment}'
 
   # ---------------------------------------------------------------------------
-  # ElastiCache Redis
+  # ElastiCache Valkey
   # ---------------------------------------------------------------------------
 
   ElastiCacheSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
     Properties:
-      Description: Private subnets for Meridian ElastiCache Redis
+      Description: Private subnets for Meridian ElastiCache Valkey
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
 
   ElastiCacheCluster:
-    Type: AWS::ElastiCache::CacheCluster
+    Type: AWS::ElastiCache::ReplicationGroup
     Properties:
-      ClusterName: !Sub '${ProjectName}-redis-${Environment}'
-      Engine: redis
-      EngineVersion: '7.1'
+      ReplicationGroupId: !Sub '${ProjectName}-valkey-${Environment}'
+      ReplicationGroupDescription: !Sub 'Meridian Valkey cluster (${Environment})'
+      Engine: valkey
+      EngineVersion: '8.0'
       CacheNodeType: cache.t3.micro
-      NumCacheNodes: 1
+      NumCacheClusters: 1
       CacheSubnetGroupName: !Ref ElastiCacheSubnetGroup
-      VpcSecurityGroupIds:
+      SecurityGroupIds:
         - !Ref ElastiCacheSG
+      AutomaticFailoverEnabled: false
+      TransitEncryptionEnabled: true
       Tags:
         - Key: Name
-          Value: !Sub '${ProjectName}-redis-${Environment}'
+          Value: !Sub '${ProjectName}-valkey-${Environment}'
 
   # ---------------------------------------------------------------------------
   # DynamoDB Tables
@@ -845,6 +864,6 @@ Outputs:
       Name: !Sub 'meridian-MemoryTableName-${Environment}'
 
   ElastiCacheEndpoint:
-    Value: !GetAtt ElastiCacheCluster.RedisEndpoint.Address
+    Value: !GetAtt ElastiCacheCluster.PrimaryEndPoint.Address
     Export:
       Name: !Sub 'meridian-ElastiCacheEndpoint-${Environment}'
