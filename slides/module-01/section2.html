@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1 Video 2: Environment Setup — From RAG Prototype to Production</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8b90a8;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; padding: 56px 72px; flex-direction: column; justify-content: center; }
+  .slide.active { display: flex; }
+  .progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s ease; }
+  .counter { position: fixed; bottom: 16px; right: 24px; font-size: 12px; color: var(--text-muted); z-index: 100; font-family: var(--mono); }
+  .nav-hint { position: fixed; bottom: 16px; left: 24px; font-size: 11px; color: var(--text-muted); z-index: 100; }
+  h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
+  .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 16px 20px; font-size: 0.95rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
+  .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
+  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; font-family: var(--mono); font-size: 0.85rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
+  .cmd-block .comment { color: var(--text-muted); }
+  .cmd-block .prompt { color: var(--text-muted); user-select: none; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; text-align: center; }
+  .stat-block .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
+  .stat-block .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+  .bullet-list { list-style: none; margin-top: 16px; }
+  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before { content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .bullet-list li strong { color: var(--text); }
+  .notes { display: none; }
+  #s-title { background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,0.08) 0%, transparent 60%), var(--bg); }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide active" id="s-title">
+    <div style="font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px;">Module 01 · Video 2</div>
+    <h1>Environment Setup</h1>
+    <h1 style="color: var(--text-muted); font-weight: 400;">Your Meridian stack,<br>from zero to running.</h1>
+    <div class="accent-line"></div>
+    <div style="margin-top: 24px; font-size: 0.95rem; color: var(--text-muted);">From RAG Prototype to Production: AI Data Architecture on AWS</div>
+    <div class="notes">
+      Brief intro then move to screen share quickly.
+
+      "Let's get your environment set up. By the end of this video you'll have Meridian's full stack running on your own AWS account — Aurora, OpenSearch, DynamoDB, Valkey, the Ridge websites, all the data loaded. Takes about 30 minutes, mostly waiting for CloudFormation. I'll walk you through it, then show you around the sites and point out the data consistency problems we're going to solve."
+    </div>
+  </div>
+
+  <!-- SLIDE 2: WHAT YOU'RE DEPLOYING -->
+  <div class="slide" id="s-overview">
+    <div class="label">What you're building</div>
+    <h2>Two stacks, 30 minutes, under £2</h2>
+    <div class="accent-line"></div>
+    <div class="two-col" style="align-items: center;">
+      <div>
+        <div class="card" style="margin-bottom: 16px; padding: 28px 32px;">
+          <div style="color: var(--accent); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-base</div>
+          <p style="font-size: 1.05rem; line-height: 1.6;">Aurora PostgreSQL · OpenSearch Serverless · DynamoDB · Valkey · S3 · VPC · IAM</p>
+        </div>
+        <div class="card" style="padding: 28px 32px;">
+          <div style="color: var(--accent2); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-web</div>
+          <p style="font-size: 1.05rem; line-height: 1.6;">Ridge Assist · Ridge Insight · API Gateway · Lambda</p>
+        </div>
+      </div>
+      <div>
+        <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
+          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">25k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Products</div></div>
+          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">200k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Reviews</div></div>
+          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">5k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Customers</div></div>
+          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">50k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Conversations</div></div>
+        </div>
+        <div class="callout callout-warn" style="margin-top: 20px; font-size: 1.05rem;">
+          <strong>Always tear down.</strong> <code>make destroy-all</code> when done. Forgetting costs £100+/week.
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      Show this slide briefly then switch to terminal.
+
+      "Two CloudFormation stacks. Base gives you all the data infrastructure. Web gives you the Ridge frontends and API. Total data: 25,000 products, 200,000 reviews, 5,000 customers, 50,000 conversations, 40 policy documents. Under two quid to deploy. But leave it running accidentally and it adds up fast — always tear down."
+
+      SWITCH TO TERMINAL. Run through the commands live:
+      1. Show the repo structure (ls)
+      2. aws configure --profile ridge-course-dev (or show it's already done)
+      3. make deploy-base (let it run, talk over it)
+      4. make deploy-web
+      5. make seed-data
+      6. make status (show both stacks CREATE_COMPLETE)
+
+      While base is deploying (~15 min), explain what's being created. Show the CloudFormation console briefly — point out the OpenSearch collection, Aurora cluster, DynamoDB tables.
+
+      Once seed-data finishes, show make status output and the stack outputs (URLs).
+    </div>
+  </div>
+
+  <!-- SLIDE 3: THE COMMANDS -->
+  <div class="slide" id="s-commands">
+    <div class="label">The full setup</div>
+    <h2>Six commands</h2>
+    <div class="accent-line"></div>
+    <div class="cmd-block">
+      <span class="comment"># Clone and install</span><br>
+      <span class="prompt">$ </span>git clone https://github.com/kandmgawron/dataforai.git && cd dataforai<br>
+      <span class="prompt">$ </span>python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt<br><br>
+      <span class="comment"># Deploy and load</span><br>
+      <span class="prompt">$ </span>make deploy-base<br>
+      <span class="prompt">$ </span>make deploy-web<br>
+      <span class="prompt">$ </span>make seed-data<br><br>
+      <span class="comment"># When done</span><br>
+      <span class="prompt">$ </span>make destroy-all
+    </div>
+    <div class="callout" style="margin-top: 16px;">
+      Full details in <code>SETUP.md</code>. Seed is idempotent — safe to re-run.
+    </div>
+    <div class="notes">
+      Show this slide as a reference, then switch to the browser to demo Ridge Assist and Ridge Insight.
+
+      DEMO FLOW — RIDGE ASSIST (customer shop):
+      1. Open the Ridge Assist URL
+      2. Browse products — show the category filters work
+      3. Search "waterproof jacket" — show results come from OpenSearch
+      4. Click a product — show the full detail page with raw supplier attributes
+      5. Show the colour filter: type "red" — some results. Type "fiery_red" — different results. "Why? Because the data uses inconsistent colour naming from suppliers."
+      6. Search for "backpack for a week in Scotland" — zero results. "This is a natural language query. BM25 keyword search can't understand intent. That's what we fix with embeddings and vector search."
+      7. Try the chat widget — submit a question, show "a member of our team will respond shortly"
+
+      DEMO FLOW — RIDGE INSIGHT (internal CRM):
+      1. Open Ridge Insight URL
+      2. Show the conversations queue — the question you just submitted appears
+      3. Search for a customer (try "CUST-00001")
+      4. Show their profile, purchase history, conversation history
+      5. Browse policy documents
+
+      DEMO FLOW — DATA DRIFT:
+      [NOTE: Product IDs will be updated once the new 25k catalogue is generated. For now use these placeholder approaches:]
+      1. Search for a product that exists in OpenSearch but NOT in Aurora — clicking it will show "Product not found"
+      2. Explain: "This product appears in our search index but doesn't exist in the database. The two systems have drifted. This happens in production when you index asynchronously. We'll fix this with zero-ETL integration in a later module."
+      [TODO: Insert specific SKUs from new dataset once generation completes]
+
+      DEMO FLOW — DATA QUALITY ISSUES:
+      1. Click any product, scroll to "Raw Supplier Attributes"
+      2. Point out: colours stored as "forest_green" with underscores vs simple "red"
+      3. Note that gender and materials exist in the source but aren't in the database schema
+      4. "These are the kind of real-world data problems that make traditional search fail. A customer searching for 'red jacket' won't find a product tagged 'crimson' or 'fiery_red'. That's why we need semantic understanding."
+    </div>
+  </div>
+
+  <!-- SLIDE 4: WHAT'S NEXT -->
+  <div class="slide" id="s-next">
+    <div class="label">Coming up</div>
+    <h2>Video 3: Embeddings on AWS</h2>
+    <div class="accent-line"></div>
+    <div class="card" style="max-width: 600px;">
+      <ul class="bullet-list" style="margin-top: 0;">
+        <li>Why <strong>"red" and "fiery_red"</strong> can become neighbours in vector space</li>
+        <li>Titan Embed v2, Cohere, and <strong>when to look at SageMaker</strong></li>
+        <li>Generating your first embeddings against the <strong>Meridian catalogue</strong></li>
+      </ul>
+    </div>
+    <div class="callout" style="margin-top: 20px;">
+      Keep your stacks running if you're continuing straight to Video 3. Otherwise, <code>make destroy-all</code>.
+    </div>
+    <div class="notes">
+      Quick sign-off.
+
+      "Have a play with Ridge Assist. Try to break the search. Notice what fails and what works. That frustration — that's exactly what we fix in the next video. Embeddings give us semantic understanding: 'red' becomes close to 'crimson' and 'fiery_red' in vector space. 'Backpack for Scotland' starts matching products tagged for hiking and mountaineering. See you in Video 3."
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- PROGRESS + COUNTER -->
+<div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="counter" id="counter">1 / 4</div>
+<div class="nav-hint">← → or click to navigate · S for notes</div>
+
+<!-- NOTES PANEL -->
+<div id="notes-panel" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#0d0f18; border-top:2px solid var(--accent); padding:20px 32px; max-height:35vh; overflow-y:auto; z-index:200; font-size:0.85rem; line-height:1.7; color:var(--text-muted);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <span style="font-weight:700; color:var(--text); font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase;">Speaker Notes</span>
+    <span style="font-size:0.75rem; color:var(--text-muted);">Press S to close</span>
+  </div>
+  <div id="notes-content"></div>
+</div>
+
+<script>
+const deck = {
+  slides: Array.from(document.querySelectorAll('.slide')),
+  cur: 0,
+  go(n) {
+    if (n < 0 || n >= this.slides.length) return;
+    this.slides[this.cur].classList.remove('active');
+    this.cur = n;
+    this.slides[this.cur].classList.add('active');
+    this.update();
+  },
+  next() { this.go(this.cur + 1); },
+  prev() { this.go(this.cur - 1); },
+  update() {
+    document.getElementById('counter').textContent = (this.cur + 1) + ' / ' + this.slides.length;
+    document.getElementById('progress-fill').style.width = ((this.cur + 1) / this.slides.length * 100) + '%';
+    if (document.getElementById('notes-panel').style.display !== 'none') this.showNotes();
+  },
+  showNotes() {
+    const notes = this.slides[this.cur].querySelector('.notes');
+    document.getElementById('notes-content').textContent = notes ? notes.textContent.trim() : 'No notes for this slide.';
+  }
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+  if (e.key === 's' || e.key === 'S') {
+    const panel = document.getElementById('notes-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    if (panel.style.display !== 'none') deck.showNotes();
+  }
+});
+document.querySelector('.deck').addEventListener('click', () => deck.next());
+deck.update();
+</script>
+</body>
+</html>

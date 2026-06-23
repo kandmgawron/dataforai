@@ -1,0 +1,254 @@
+/* Ridge Insight — Internal CRM */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #e0e0e0;
+  --sidebar-active: #2d6a4f;
+  --dark: #111111;
+  --grey: #555555;
+  --light-grey: #f8f9fa;
+  --border: #e0e0e0;
+  --white: #ffffff;
+  --green: #2d6a4f;
+  --green-light: #40916c;
+  --radius: 6px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--dark);
+  background: var(--light-grey);
+  line-height: 1.5;
+}
+
+/* Layout */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  flex-shrink: 0;
+}
+.sidebar-brand h1 {
+  font-size: 1.2rem;
+  color: var(--white);
+}
+.sidebar-brand span {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--sidebar-text);
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.nav-btn:hover {
+  background: rgba(255,255,255,0.05);
+}
+.nav-btn.active {
+  background: var(--sidebar-active);
+  color: var(--white);
+}
+
+/* Content */
+.content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 900px;
+}
+.content h2 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--grey);
+  margin-bottom: 1rem;
+}
+
+/* Search rows */
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.search-row input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+.search-row button {
+  padding: 0.5rem 1rem;
+  background: var(--green);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.search-row button:hover {
+  background: var(--green-light);
+}
+
+/* Cards & tables */
+.result-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.result-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.result-card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+.result-card .meta {
+  font-size: 0.8rem;
+  color: var(--grey);
+}
+
+/* Customer detail */
+.customer-profile {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.customer-profile h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+.customer-profile dl {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.3rem 1rem;
+  font-size: 0.85rem;
+}
+.customer-profile dt {
+  font-weight: 600;
+  color: var(--grey);
+}
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.badge-gold { background: #fff3cd; color: #856404; }
+.badge-silver { background: #e2e3e5; color: #383d41; }
+.badge-bronze { background: #f5e6d3; color: #7c4a03; }
+.badge-platinum { background: #d4edda; color: #155724; }
+
+/* Conversations */
+.convo-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+}
+.convo-card .convo-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--grey);
+  margin-bottom: 0.3rem;
+}
+.convo-card .convo-msg {
+  font-size: 0.9rem;
+}
+
+/* Policies */
+.policy-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+.policy-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.policy-content {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+/* Product results (insight) */
+.product-row {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.product-row .product-info h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+}
+.product-row .product-info .meta {
+  font-size: 0.8rem;
+  color: var(--grey);
+}
+.product-row .product-stock {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* Back links */
+.back-link {
+  background: none;
+  border: none;
+  color: var(--green);
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+@media (max-width: 700px) {
+  .layout { flex-direction: column; }
+  .sidebar { width: 100%; flex-direction: row; padding: 0.75rem; gap: 1rem; align-items: center; }
+  .sidebar nav { flex-direction: row; gap: 0.5rem; }
+  .sidebar-brand span { display: none; }
+}
