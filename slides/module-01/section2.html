@@ -36,7 +36,7 @@
   .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
   code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: stretch; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
   .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; font-size: 1.05rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
   .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
   .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; font-family: var(--mono); font-size: 0.95rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
@@ -79,17 +79,17 @@
     <div class="accent-line"></div>
     <div class="two-col">
       <div style="display: flex; flex-direction: column; gap: 16px;">
-        <div class="card" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+        <div class="card">
           <div style="color: var(--accent); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-base</div>
           <p style="font-size: 1.05rem; line-height: 1.6;">Aurora PostgreSQL · OpenSearch Serverless · DynamoDB · Valkey · S3 · VPC · IAM</p>
         </div>
-        <div class="card" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+        <div class="card">
           <div style="color: var(--accent2); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-web</div>
           <p style="font-size: 1.05rem; line-height: 1.6;">Ridge Assist · Ridge Insight · API Gateway · Lambda</p>
         </div>
       </div>
-      <div style="display: flex;">
-        <div class="stat-grid" style="grid-template-columns: 1fr 1fr; flex: 1; align-content: center;">
+      <div>
+        <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
           <div class="stat-block"><div class="stat-num">25k</div><div class="stat-label">Products</div></div>
           <div class="stat-block"><div class="stat-num">200k</div><div class="stat-label">Reviews</div></div>
           <div class="stat-block"><div class="stat-num">5k</div><div class="stat-label">Customers</div></div>

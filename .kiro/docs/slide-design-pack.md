@@ -71,7 +71,7 @@ Standard design system for all course slide decks. Every module must follow this
 - Body/card text minimum: 1.05rem. Never go below 0.95rem for any readable text.
 - Card labels (uppercase headers inside cards): 0.85rem minimum.
 - Callout text: 1.05rem.
-- When using two-col with multiple boxes per column, use `align-items: stretch` (the default) so columns share the same height. Use flexbox inside columns with `flex: 1` on cards to divide space evenly.
+- When using two-col, both columns are vertically centred by default (`align-items: center`). No additional flex hacks needed.
 - Stat numbers: 2.2rem. Stat labels: 0.85rem.
 - Card padding: 28px 32px. Stat block padding: 24px.
 
@@ -138,7 +138,7 @@ Items start hidden; each click/arrow reveals the next step number.
 </div>
 ```
 
-Use `align-items: stretch` when both columns contain multiple boxes that should share the same total height (tops and bottoms line up). Use flexbox inside each column (`display: flex; flex-direction: column; gap: 16px`) with `flex: 1` on child cards so they divide vertical space evenly. For the simpler case where columns have a single block each, `align-items: center` is fine.
+Use `align-items: center` (the default) so both columns are vertically centred against each other. This is the standard for all two-col slides. No flex hacks needed — the grid handles vertical centring automatically.
 
 ### Bullet List
 ```html
