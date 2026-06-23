@@ -154,6 +154,8 @@ Uses → arrow prefix, border-bottom separator. Font-size: 1.05rem, line-height:
 ```
 Blue-tinted background, left border accent. Padding: 20px 24px. Font-size: 1.05rem.
 
+When a slide uses a two-col or grid layout, place callouts **below** the grid at full width, not nested inside one column. This keeps them visually anchored as a footer-level message spanning the whole slide.
+
 ### Stat Block
 ```html
 <div class="stat-grid">
