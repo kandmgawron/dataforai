@@ -46,8 +46,15 @@ Standard design system for all course slide decks. Every module must follow this
 | h2 | 2rem | 700 | --sans |
 | h3 | 1.3rem | 600 | --sans |
 | Body (p) | 1.05rem | 400 | --sans |
+| Bullet list items | 1.05rem | 400 | --sans |
+| Callout text | 1.05rem | 400 | --sans |
+| Card body text | 1.05rem min | 400 | --sans |
+| Card label | 0.85rem | 700, uppercase, 0.1em tracking | --sans |
 | Label | 0.75rem | 600, uppercase, 0.12em tracking | --sans |
 | Code/numbers | varies | varies | --mono |
+| Stat numbers | 2.2rem | 800 | --mono |
+| Stat labels | 0.85rem | 400 | --sans |
+| Command block | 0.95rem | 400 | --mono |
 
 ---
 
@@ -139,13 +146,13 @@ Always use `align-items: center` on `.two-col` so left and right columns are ver
   <li><strong>Bold part</strong> then description</li>
 </ul>
 ```
-Uses → arrow prefix, border-bottom separator.
+Uses → arrow prefix, border-bottom separator. Font-size: 1.05rem, line-height: 1.6. Padding per item: 10px 0.
 
 ### Callout Box
 ```html
 <div class="callout">Important note with <strong>bold</strong> emphasis.</div>
 ```
-Blue-tinted background, left border accent.
+Blue-tinted background, left border accent. Padding: 20px 24px. Font-size: 1.05rem.
 
 ### Stat Block
 ```html

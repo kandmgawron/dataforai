@@ -35,19 +35,19 @@
   .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
   .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
   code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
-  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 16px 20px; font-size: 0.95rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; font-size: 1.05rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
   .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
-  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; font-family: var(--mono); font-size: 0.85rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
+  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; font-family: var(--mono); font-size: 0.95rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
   .cmd-block .comment { color: var(--text-muted); }
   .cmd-block .prompt { color: var(--text-muted); user-select: none; }
   .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
-  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; text-align: center; }
-  .stat-block .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
-  .stat-block .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center; }
+  .stat-block .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
+  .stat-block .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
   .bullet-list { list-style: none; margin-top: 16px; }
-  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; font-size: 1.05rem; line-height: 1.6; color: var(--text-muted); border-bottom: 1px solid var(--border); }
   .bullet-list li:last-child { border-bottom: none; }
   .bullet-list li::before { content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
   .bullet-list li strong { color: var(--text); }
@@ -64,7 +64,7 @@
     <h1>Environment Setup</h1>
     <h1 style="color: var(--text-muted); font-weight: 400;">Your Meridian stack,<br>from zero to running.</h1>
     <div class="accent-line"></div>
-    <div style="margin-top: 24px; font-size: 0.95rem; color: var(--text-muted);">From RAG Prototype to Production: AI Data Architecture on AWS</div>
+    <div style="margin-top: 24px; font-size: 1.05rem; color: var(--text-muted);">From RAG Prototype to Production: AI Data Architecture on AWS</div>
     <div class="notes">
       Brief intro then move to screen share quickly.
 
@@ -79,23 +79,23 @@
     <div class="accent-line"></div>
     <div class="two-col" style="align-items: center;">
       <div>
-        <div class="card" style="margin-bottom: 16px; padding: 28px 32px;">
+        <div class="card" style="margin-bottom: 16px;">
           <div style="color: var(--accent); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-base</div>
           <p style="font-size: 1.05rem; line-height: 1.6;">Aurora PostgreSQL · OpenSearch Serverless · DynamoDB · Valkey · S3 · VPC · IAM</p>
         </div>
-        <div class="card" style="padding: 28px 32px;">
+        <div class="card">
           <div style="color: var(--accent2); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-web</div>
           <p style="font-size: 1.05rem; line-height: 1.6;">Ridge Assist · Ridge Insight · API Gateway · Lambda</p>
         </div>
       </div>
       <div>
         <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
-          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">25k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Products</div></div>
-          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">200k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Reviews</div></div>
-          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">5k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Customers</div></div>
-          <div class="stat-block" style="padding: 24px;"><div class="stat-num" style="font-size: 2.2rem;">50k</div><div class="stat-label" style="font-size: 0.85rem; margin-top: 8px;">Conversations</div></div>
+          <div class="stat-block"><div class="stat-num">25k</div><div class="stat-label">Products</div></div>
+          <div class="stat-block"><div class="stat-num">200k</div><div class="stat-label">Reviews</div></div>
+          <div class="stat-block"><div class="stat-num">5k</div><div class="stat-label">Customers</div></div>
+          <div class="stat-block"><div class="stat-num">50k</div><div class="stat-label">Conversations</div></div>
         </div>
-        <div class="callout callout-warn" style="margin-top: 20px; font-size: 1.05rem;">
+        <div class="callout callout-warn" style="margin-top: 20px;">
           <strong>Always tear down.</strong> <code>make destroy-all</code> when done. Forgetting costs £100+/week.
         </div>
       </div>
@@ -176,7 +176,7 @@
     <div class="label">Coming up</div>
     <h2>Video 3: Embeddings on AWS</h2>
     <div class="accent-line"></div>
-    <div class="card" style="max-width: 600px;">
+    <div class="card" style="max-width: 720px;">
       <ul class="bullet-list" style="margin-top: 0;">
         <li>Why <strong>"red" and "fiery_red"</strong> can become neighbours in vector space</li>
         <li>Titan Embed v2, Cohere, and <strong>when to look at SageMaker</strong></li>
