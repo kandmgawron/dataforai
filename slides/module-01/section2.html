@@ -176,12 +176,57 @@
     <div class="label">Coming up</div>
     <h2>Video 3: Embeddings on AWS</h2>
     <div class="accent-line"></div>
-    <div class="card" style="max-width: 720px;">
-      <ul class="bullet-list" style="margin-top: 0;">
-        <li>Why <strong>"red" and "fiery_red"</strong> can become neighbours in vector space</li>
-        <li>Titan Embed v2, Cohere, and <strong>when to look at SageMaker</strong></li>
-        <li>Generating your first embeddings against the <strong>Meridian catalogue</strong></li>
-      </ul>
+    <div class="two-col">
+      <div class="card">
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Why <strong>"red" and "fiery_red"</strong> can become neighbours in vector space</li>
+          <li>Titan Embed v2, Cohere, and <strong>when to look at SageMaker</strong></li>
+          <li>Generating your first embeddings against the <strong>Meridian catalogue</strong></li>
+        </ul>
+      </div>
+      <div>
+        <!-- Keyword vs Semantic search comparison -->
+        <svg viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+          <!-- Keyword search side -->
+          <rect x="10" y="10" width="180" height="140" rx="10" fill="#1a1d27" stroke="#2e3350"/>
+          <text x="100" y="36" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#e05c5c" letter-spacing="0.08em">KEYWORD SEARCH</text>
+          <rect x="30" y="52" width="140" height="28" rx="6" fill="#22263a" stroke="#2e3350"/>
+          <text x="100" y="71" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#8b90a8">"backpack Scotland"</text>
+          <text x="100" y="105" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#e05c5c">✗ 0 results</text>
+          <text x="100" y="126" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" fill="#8b90a8">No exact token match</text>
+          <!-- Semantic search side -->
+          <rect x="210" y="10" width="180" height="140" rx="10" fill="#1a1d27" stroke="#2e3350"/>
+          <text x="300" y="36" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#3ecf8e" letter-spacing="0.08em">SEMANTIC SEARCH</text>
+          <rect x="230" y="52" width="140" height="28" rx="6" fill="#22263a" stroke="#2e3350"/>
+          <text x="300" y="71" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#8b90a8">"backpack Scotland"</text>
+          <text x="300" y="105" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#3ecf8e">✓ 12 results</text>
+          <text x="300" y="126" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" fill="#8b90a8">Hiking, mountaineering, waterproof</text>
+          <!-- Vector space visualisation -->
+          <rect x="10" y="170" width="380" height="140" rx="10" fill="#1a1d27" stroke="#2e3350"/>
+          <text x="200" y="192" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="600" fill="#4f8ef7" letter-spacing="0.08em">VECTOR SPACE</text>
+          <!-- Cluster: reds -->
+          <circle cx="90" cy="245" r="5" fill="#e05c5c" opacity="0.9"/>
+          <text x="90" y="265" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">red</text>
+          <circle cx="115" cy="235" r="5" fill="#e05c5c" opacity="0.7"/>
+          <text x="115" y="225" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">crimson</text>
+          <circle cx="72" cy="232" r="5" fill="#e05c5c" opacity="0.7"/>
+          <text x="72" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">fiery_red</text>
+          <!-- Cluster: outdoor -->
+          <circle cx="280" cy="250" r="5" fill="#3ecf8e" opacity="0.9"/>
+          <text x="280" y="270" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">hiking</text>
+          <circle cx="310" cy="238" r="5" fill="#3ecf8e" opacity="0.7"/>
+          <text x="310" y="228" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">Scotland</text>
+          <circle cx="340" cy="255" r="5" fill="#3ecf8e" opacity="0.7"/>
+          <text x="340" y="275" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">backpack</text>
+          <circle cx="295" cy="265" r="5" fill="#3ecf8e" opacity="0.5"/>
+          <text x="295" y="285" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">waterproof</text>
+          <!-- Cluster: blue -->
+          <circle cx="190" cy="280" r="5" fill="#4f8ef7" opacity="0.7"/>
+          <text x="190" y="298" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">navy</text>
+          <circle cx="210" cy="270" r="5" fill="#4f8ef7" opacity="0.5"/>
+          <text x="210" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">blue</text>
+        </svg>
+      </div>
     </div>
     <div class="callout" style="margin-top: 20px;">
       Keep your stacks running if you're continuing straight to Video 3. Otherwise, <code>make destroy-all</code>.
