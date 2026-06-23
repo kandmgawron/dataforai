@@ -156,6 +156,8 @@ Blue-tinted background, left border accent. Padding: 20px 24px. Font-size: 1.05r
 
 When a slide uses a two-col or grid layout, place callouts **below** the grid at full width, not nested inside one column. This keeps them visually anchored as a footer-level message spanning the whole slide.
 
+Exception: if the callout is contextually tied to one column's content (e.g. a tip related to the text list, not the diagram), place it directly beneath that column's card inside the column wrapper.
+
 ### Stat Block
 ```html
 <div class="stat-grid">
