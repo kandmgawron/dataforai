@@ -98,14 +98,14 @@ WITH (lists = 100);
 OPENSEARCH_INDEX_BODY = {
     "settings": {
         "index": {
-            "knn": True,
-            "knn.algo_param.ef_search": 100,
+            "number_of_shards": 2,
+            "number_of_replicas": 0,
         }
     },
     "mappings": {
         "properties": {
             "sku":               {"type": "keyword"},
-            "name":              {"type": "text", "analyzer": "english"},
+            "name":              {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword"}}},
             "l1":                {"type": "keyword"},
             "l2":                {"type": "keyword"},
             "l3":                {"type": "keyword"},
@@ -114,21 +114,18 @@ OPENSEARCH_INDEX_BODY = {
             "on_sale":           {"type": "boolean"},
             "short_description": {"type": "text", "analyzer": "english"},
             "long_description":  {"type": "text", "analyzer": "english"},
+            "colours":           {"type": "keyword"},
+            "gender":            {"type": "keyword"},
             "activities":        {"type": "keyword"},
             "seasons":           {"type": "keyword"},
             "in_stock":          {"type": "boolean"},
-            "embedding": {
-                "type": "knn_vector",
-                "dimension": EMBED_DIMS,
-                "method": {
-                    "name": "hnsw",
-                    "engine": "nmslib",
-                    "parameters": {"ef_construction": 128, "m": 16},
-                },
-            },
+            "stock_total":       {"type": "integer"},
         }
     },
 }
+
+# ponytail: knn_vector field added later when embeddings are generated (Module 3).
+# Separate index mapping update script handles that.
 
 
 # ---------------------------------------------------------------------------
@@ -412,7 +409,18 @@ def seed_opensearch(collection_endpoint: str, session, products: list[dict],
             "activities":        p.get("activity_tags") or p.get("activities", []),
             "seasons":           p.get("season") or p.get("seasons", []),
             "in_stock":          bool(p.get("is_active", p.get("in_stock", True))),
+            "stock_total":       int(p.get("total_stock", p.get("stock_total", 0)) or 0),
+            "gender":            p.get("gender", ""),
         }
+        # Extract colours from attributes
+        attrs = p.get("attributes", {})
+        if isinstance(attrs, str):
+            try:
+                attrs = json.loads(attrs)
+            except Exception:
+                attrs = {}
+        if isinstance(attrs, dict):
+            doc["colours"] = attrs.get("colours", [])
         if embedding:
             doc["embedding"] = embedding
 

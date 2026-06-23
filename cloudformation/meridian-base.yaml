@@ -770,7 +770,7 @@ Resources:
       Name: !Sub '${ProjectName}-${Environment}'
       Description: !Sub 'Meridian product search and vector store (${Environment})'
       Generation: NEXTGEN
-      StandbyReplicas: DISABLED
+      StandbyReplicas: ENABLED
       CapacityLimits:
         MinIndexingCapacityInOcu: 0
         MinSearchCapacityInOcu: 0
