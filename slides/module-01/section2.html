@@ -289,6 +289,12 @@ const deck = {
       </div>
     </body></html>`);
     this.notesWin.document.close();
+    // Allow controlling from notes window
+    this.notesWin.document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+    });
+    this.notesWin.document.addEventListener('click', () => deck.next());
     // Start timer
     this.notesStartTime = Date.now();
     this.notesTimer = setInterval(() => {
