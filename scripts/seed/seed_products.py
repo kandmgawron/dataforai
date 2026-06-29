@@ -141,6 +141,21 @@ def get_stack_output(cfn, stack_name: str, key: str) -> str:
     raise ValueError(f"Output '{key}' not found in stack '{stack_name}'")
 
 
+def _to_list(val):
+    """Convert numpy arrays, strings, or None to a plain Python list."""
+    if val is None:
+        return []
+    if isinstance(val, str):
+        try:
+            val = json.loads(val)
+        except (json.JSONDecodeError, ValueError):
+            return [val] if val else []
+    try:
+        return list(val)
+    except (TypeError, ValueError):
+        return []
+
+
 def generate_embedding(bedrock_runtime, text: str, max_retries: int = 4) -> list[float] | None:
     """Generate a Titan Embed v2 embedding. Returns None on failure."""
     body = json.dumps({"inputText": text, "dimensions": EMBED_DIMS, "normalize": True})
@@ -250,8 +265,8 @@ ON CONFLICT (sku) DO NOTHING;
         else:
             attrs_json = str(attrs)
 
-        activities = p.get("activity_tags") or p.get("activities", [])
-        seasons = p.get("season") or p.get("seasons", [])
+        activities = _to_list(p.get("activity_tags")) or _to_list(p.get("activities")) or []
+        seasons = _to_list(p.get("season")) or _to_list(p.get("seasons")) or []
         if isinstance(activities, str):
             try:
                 activities = json.loads(activities)
@@ -406,8 +421,8 @@ def seed_opensearch(collection_endpoint: str, session, products: list[dict],
             "on_sale":           bool(p.get("on_sale", False)),
             "short_description": p.get("short_description", ""),
             "long_description":  p.get("long_description", ""),
-            "activities":        p.get("activity_tags") or p.get("activities", []),
-            "seasons":           p.get("season") or p.get("seasons", []),
+            "activities":        _to_list(p.get("activity_tags")) or _to_list(p.get("activities")) or [],
+            "seasons":           _to_list(p.get("season")) or _to_list(p.get("seasons")) or [],
             "in_stock":          bool(p.get("is_active", p.get("in_stock", True))),
             "stock_total":       int(p.get("total_stock", p.get("stock_total", 0)) or 0),
             "gender":            p.get("gender", ""),
@@ -495,8 +510,13 @@ def main() -> None:
 
     # Load products
     print("\nLoading products...")
-    parquet_path = data_dir / "products_full_40000.parquet"
-    json_path    = data_dir / "products_full_40000.json"
+    parquet_path = data_dir / "products_25000.parquet"
+    json_path    = data_dir / "products_25000.json"
+
+    if not parquet_path.exists():
+        # Fallback to old naming
+        parquet_path = data_dir / "products_full_40000.parquet"
+        json_path = data_dir / "products_full_40000.json"
 
     if parquet_path.exists():
         df = pd.read_parquet(parquet_path)
