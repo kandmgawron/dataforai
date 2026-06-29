@@ -301,7 +301,7 @@ const deck = {
           if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); window.opener.deck.next(); }
           if (e.key === 'ArrowLeft') { e.preventDefault(); window.opener.deck.prev(); }
         });
-      </script>
+      <\/script>
     </body></html>`);
     this.notesWin.document.close();
     // Start timer
@@ -322,8 +322,15 @@ const deck = {
       return;
     }
     const slide = this.slides[slideIndex];
-    const styles = document.querySelector('style').outerHTML;
-    iframe.srcdoc = '<html><head>' + styles + '</head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">' + slide.innerHTML.replace(/<div class="notes">[\s\S]*?<\/div>/, '') + '</div></body></html>';
+    const clone = slide.cloneNode(true);
+    // Remove notes from clone
+    const notes = clone.querySelector('.notes');
+    if (notes) notes.remove();
+    // Build srcdoc without direct innerHTML concat (avoids script tag issues)
+    const styles = document.querySelector('style').textContent;
+    const content = clone.innerHTML;
+    const doc = '<!DOCTYPE html><html><head><style>' + styles + '</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">' + content + '</div></body></html>';
+    iframe.srcdoc = doc;
   },
   updateNotes() {
     if (!this.notesWin || this.notesWin.closed) return;
