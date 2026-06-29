@@ -158,10 +158,9 @@
       5. Browse policy documents
 
       DEMO FLOW — DATA DRIFT:
-      [NOTE: Product IDs will be updated once the new 25k catalogue is generated. For now use these placeholder approaches:]
-      1. Search for a product that exists in OpenSearch but NOT in Aurora — clicking it will show "Product not found"
-      2. Explain: "This product appears in our search index but doesn't exist in the database. The two systems have drifted. This happens in production when you index asynchronously. We'll fix this with zero-ETL integration in a later module."
-      [TODO: Insert specific SKUs from new dataset once generation completes]
+      1. Search for "Snowdon Ghost" — finds "Snowdon Ghost Tent" by Basecamp at £299.99 (SKU: MER-DRIFT-001)
+      2. Click it — "Product not found". This product exists in the OpenSearch search index but NOT in Aurora.
+      3. Explain: "This is data drift. Meridian's search index and database have fallen out of sync. A product was added to the catalogue and indexed for search, but the database record was never created — or it was deleted and the index wasn't updated. This happens in production when you write to two systems without transactional guarantees. We'll fix this with zero-ETL integration in a later module."
 
       DEMO FLOW — DATA QUALITY ISSUES:
       1. Click any product, scroll to "Raw Supplier Attributes"

@@ -19,9 +19,6 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
-import urllib.request
 
 # --- Config ---
 CLUSTER_ARN = os.environ.get("AURORA_CLUSTER_ARN", "")
@@ -128,7 +125,6 @@ def get_products_opensearch(search, category, colour, price_min, price_max, gend
         "size": limit,
         "from": offset,
         "_source": ["sku", "name", "brand", "l1", "price_gbp", "short_description", "stock_total", "in_stock"],
-        "sort": [{"name.keyword": "asc"}]
     }
 
     try:
@@ -137,6 +133,10 @@ def get_products_opensearch(search, category, colour, price_min, price_max, gend
         products = [h["_source"] for h in hits]
         return response(200, products)
     except Exception as e:
+        import traceback
+        print(f"OpenSearch error: {e}")
+        print(f"Query body: {json.dumps(body)}")
+        print(traceback.format_exc())
         # Fallback to Aurora on OpenSearch error
         return get_products_aurora(search, category, colour, price_min, price_max, gender, limit, offset)
 
@@ -426,18 +426,32 @@ def response(status_code, body):
 
 def opensearch_request(method, path, body=None):
     """Make a signed request to OpenSearch Serverless (AOSS)."""
-    url = f"{OPENSEARCH_ENDPOINT}{path}"
-    data = json.dumps(body).encode() if body else None
+    import hashlib
+    import urllib.request as urllib_request
+    from botocore.auth import SigV4Auth
+    from botocore.awsrequest import AWSRequest
 
-    credentials = session.get_credentials().get_frozen_credentials()
-    request = AWSRequest(method=method, url=url, data=data, headers={"Content-Type": "application/json"})
+    url = f"{OPENSEARCH_ENDPOINT}{path}"
+    data = json.dumps(body).encode() if body else b""
+
+    # AOSS requires x-amz-content-sha256 header
+    content_hash = hashlib.sha256(data).hexdigest()
+    headers = {
+        "Content-Type": "application/json",
+        "x-amz-content-sha256": content_hash,
+    }
+
+    fresh_session = boto3.Session()
+    credentials = fresh_session.get_credentials().get_frozen_credentials()
+
+    request = AWSRequest(method=method, url=url, data=data, headers=headers)
     SigV4Auth(credentials, "aoss", AWS_REGION).add_auth(request)
 
-    req = urllib.request.Request(
+    req = urllib_request.Request(
         url=request.url,
         data=data,
         headers=dict(request.headers),
         method=method,
     )
-    with urllib.request.urlopen(req) as resp:
+    with urllib_request.urlopen(req) as resp:
         return json.loads(resp.read())

@@ -862,6 +862,8 @@ Resources:
             "Principal": [
               "${NotebookRole.Arn}",
               "${LambdaExecutionRole.Arn}",
+              "arn:aws:sts::${AWS::AccountId}:assumed-role/${LambdaExecutionRole}/*",
+              "arn:aws:sts::${AWS::AccountId}:assumed-role/${NotebookRole}/*",
               "arn:aws:iam::${AWS::AccountId}:root"
             ]
           }
