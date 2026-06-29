@@ -277,6 +277,9 @@ const deck = {
       .slide-frame.current{border-color:#4f8ef7;border-width:2px;}
       .slide-frame h3{position:absolute;top:4px;left:8px;font-size:0.6rem;color:#8b90a8;text-transform:uppercase;letter-spacing:0.08em;z-index:1;}
       .slide-frame iframe{width:200%;height:200%;border:none;pointer-events:none;transform:scale(0.5);transform-origin:0 0;}
+      .nav-btns{display:flex;gap:0.5rem;margin-top:0.75rem;flex-shrink:0;}
+      .nav-btns button{flex:1;padding:0.5rem;background:#1a1d27;border:1px solid #2e3350;border-radius:6px;color:#e8eaf0;cursor:pointer;font-size:0.85rem;}
+      .nav-btns button:hover{background:#22263a;}
     </style></head><body>
       <div class="top">
         <span class="slide-num" id="nn-slide">1 / 4</span>
@@ -287,18 +290,20 @@ const deck = {
         <div class="slide-frame current"><h3>Current</h3><iframe id="nn-current"></iframe></div>
         <div class="slide-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
       </div>
+      <div class="nav-btns">
+        <button id="nn-prev">← Previous</button>
+        <button id="nn-next-btn">Next →</button>
+      </div>
+      <script>
+        document.getElementById('nn-prev').addEventListener('click', function() { window.opener.deck.prev(); });
+        document.getElementById('nn-next-btn').addEventListener('click', function() { window.opener.deck.next(); });
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); window.opener.deck.next(); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); window.opener.deck.prev(); }
+        });
+      </script>
     </body></html>`);
     this.notesWin.document.close();
-    // Allow controlling from notes window — references back to opener (main presentation)
-    const notesScript = this.notesWin.document.createElement('script');
-    notesScript.textContent = `
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); window.opener.deck.next(); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); window.opener.deck.prev(); }
-      });
-      document.addEventListener('click', function() { window.opener.deck.next(); });
-    `;
-    this.notesWin.document.body.appendChild(notesScript);
     // Start timer
     this.notesStartTime = Date.now();
     this.notesTimer = setInterval(() => {
