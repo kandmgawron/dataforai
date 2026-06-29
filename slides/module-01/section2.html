@@ -323,11 +323,11 @@ ch.onmessage = function(e){
     else{nxtF.srcdoc='<html><body style="background:#0f1117;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><p style="color:#8b90a8;font-family:sans-serif;">End</p></body></html>';}
   }
 };
-document.getElementById('nn-prev').addEventListener('click',function(){ch.postMessage({type:'PREV'});});
-document.getElementById('nn-next-btn').addEventListener('click',function(){ch.postMessage({type:'NEXT'});});
+document.getElementById('nn-prev').addEventListener('click',function(){ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();});
+document.getElementById('nn-next-btn').addEventListener('click',function(){ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();});
 document.addEventListener('keydown',function(e){
-  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();ch.postMessage({type:'NEXT'});}
-  if(e.key==='ArrowLeft'){e.preventDefault();ch.postMessage({type:'PREV'});}
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();}
+  if(e.key==='ArrowLeft'){e.preventDefault();ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();}
 });
 <\/script></body></html>`;
     this.notesWin = window.open('', 'speaker-notes', 'width=1000,height=700');
