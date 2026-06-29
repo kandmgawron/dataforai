@@ -265,16 +265,57 @@ const deck = {
     this.updateNotes();
   },
   openNotes() {
-    this.notesWin = window.open('', 'speaker-notes', 'width=600,height=500');
-    this.notesWin.document.write('<html><head><title>Speaker Notes</title><style>body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:2rem;line-height:1.7;font-size:0.95rem;} h2{color:#4f8ef7;font-size:1rem;margin-bottom:0.5rem;}</style></head><body><h2>Speaker Notes</h2><div id="notes"></div></body></html>');
+    this.notesWin = window.open('', 'speaker-notes', 'width=900,height=700');
+    this.notesWin.document.write(`<html><head><title>Speaker Notes</title><style>
+      body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;}
+      .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid #2e3350;padding-bottom:0.75rem;}
+      .timer{font-family:'JetBrains Mono',monospace;font-size:1.4rem;color:#4f8ef7;}
+      .slide-num{font-size:0.85rem;color:#8b90a8;}
+      .slides-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+      .slide-preview{background:#1a1d27;border:1px solid #2e3350;border-radius:8px;padding:0.75rem;min-height:120px;font-size:0.7rem;overflow:hidden;}
+      .slide-preview.current{border-color:#4f8ef7;}
+      .slide-preview h3{font-size:0.7rem;color:#8b90a8;margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.08em;}
+      .notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;}
+    </style></head><body>
+      <div class="top">
+        <span class="slide-num" id="nn-slide">1 / 4</span>
+        <span class="timer" id="nn-timer">00:00</span>
+      </div>
+      <div class="slides-row">
+        <div class="slide-preview current"><h3>Current</h3><div id="nn-current"></div></div>
+        <div class="slide-preview"><h3>Next</h3><div id="nn-next"></div></div>
+      </div>
+      <div class="notes-content" id="nn-notes"></div>
+    </body></html>`);
     this.notesWin.document.close();
+    // Start timer
+    this.notesStartTime = Date.now();
+    this.notesTimer = setInterval(() => {
+      if (!this.notesWin || this.notesWin.closed) { clearInterval(this.notesTimer); return; }
+      const elapsed = Math.floor((Date.now() - this.notesStartTime) / 1000);
+      const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const s = String(elapsed % 60).padStart(2, '0');
+      const el = this.notesWin.document.getElementById('nn-timer');
+      if (el) el.textContent = m + ':' + s;
+    }, 1000);
     this.updateNotes();
   },
   updateNotes() {
     if (!this.notesWin || this.notesWin.closed) return;
+    const doc = this.notesWin.document;
+    // Slide number
+    const numEl = doc.getElementById('nn-slide');
+    if (numEl) numEl.textContent = (this.cur + 1) + ' / ' + this.slides.length;
+    // Current slide text content
+    const curEl = doc.getElementById('nn-current');
+    if (curEl) curEl.textContent = this.slides[this.cur].textContent.trim().substring(0, 300);
+    // Next slide text content
+    const nextEl = doc.getElementById('nn-next');
+    if (nextEl) nextEl.textContent = this.cur + 1 < this.slides.length ? this.slides[this.cur + 1].textContent.trim().substring(0, 300) : '— End —';
+    // Notes
     const notes = this.slides[this.cur].querySelector('.notes');
-    const el = this.notesWin.document.getElementById('notes');
-    if (el) el.innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit;">' + (notes ? notes.textContent.trim() : 'No notes.') + '</pre>';
+    const notesEl = doc.getElementById('nn-notes');
+    if (notesEl) notesEl.textContent = notes ? notes.textContent.trim() : '';
   }
 };
 document.addEventListener('keydown', e => {
