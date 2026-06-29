@@ -28,7 +28,6 @@
   .progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s ease; }
   .counter { position: fixed; bottom: 16px; right: 24px; font-size: 12px; color: var(--text-muted); z-index: 100; font-family: var(--mono); }
-  .nav-hint { position: fixed; bottom: 16px; left: 24px; font-size: 11px; color: var(--text-muted); z-index: 100; }
   h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
   h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
   p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
@@ -244,21 +243,13 @@
 <!-- PROGRESS + COUNTER -->
 <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
 <div class="counter" id="counter">1 / 4</div>
-<div class="nav-hint">← → or click to navigate · S for notes</div>
 
-<!-- NOTES PANEL -->
-<div id="notes-panel" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#0d0f18; border-top:2px solid var(--accent); padding:20px 32px; max-height:35vh; overflow-y:auto; z-index:200; font-size:0.85rem; line-height:1.7; color:var(--text-muted);">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-    <span style="font-weight:700; color:var(--text); font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase;">Speaker Notes</span>
-    <span style="font-size:0.75rem; color:var(--text-muted);">Press S to close</span>
-  </div>
-  <div id="notes-content"></div>
-</div>
-
+<!-- NOTES open in separate window via N key -->
 <script>
 const deck = {
   slides: Array.from(document.querySelectorAll('.slide')),
   cur: 0,
+  notesWin: null,
   go(n) {
     if (n < 0 || n >= this.slides.length) return;
     this.slides[this.cur].classList.remove('active');
@@ -271,21 +262,25 @@ const deck = {
   update() {
     document.getElementById('counter').textContent = (this.cur + 1) + ' / ' + this.slides.length;
     document.getElementById('progress-fill').style.width = ((this.cur + 1) / this.slides.length * 100) + '%';
-    if (document.getElementById('notes-panel').style.display !== 'none') this.showNotes();
+    this.updateNotes();
   },
-  showNotes() {
+  openNotes() {
+    this.notesWin = window.open('', 'speaker-notes', 'width=600,height=500');
+    this.notesWin.document.write('<html><head><title>Speaker Notes</title><style>body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:2rem;line-height:1.7;font-size:0.95rem;} h2{color:#4f8ef7;font-size:1rem;margin-bottom:0.5rem;}</style></head><body><h2>Speaker Notes</h2><div id="notes"></div></body></html>');
+    this.notesWin.document.close();
+    this.updateNotes();
+  },
+  updateNotes() {
+    if (!this.notesWin || this.notesWin.closed) return;
     const notes = this.slides[this.cur].querySelector('.notes');
-    document.getElementById('notes-content').textContent = notes ? notes.textContent.trim() : 'No notes for this slide.';
+    const el = this.notesWin.document.getElementById('notes');
+    if (el) el.innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit;">' + (notes ? notes.textContent.trim() : 'No notes.') + '</pre>';
   }
 };
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
   if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
-  if (e.key === 's' || e.key === 'S') {
-    const panel = document.getElementById('notes-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    if (panel.style.display !== 'none') deck.showNotes();
-  }
+  if (e.key === 'n' || e.key === 'N') { deck.openNotes(); }
 });
 document.querySelector('.deck').addEventListener('click', () => deck.next());
 deck.update();
