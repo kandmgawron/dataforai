@@ -289,12 +289,16 @@ const deck = {
       </div>
     </body></html>`);
     this.notesWin.document.close();
-    // Allow controlling from notes window
-    this.notesWin.document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
-    });
-    this.notesWin.document.addEventListener('click', () => deck.next());
+    // Allow controlling from notes window — references back to opener (main presentation)
+    const notesScript = this.notesWin.document.createElement('script');
+    notesScript.textContent = `
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); window.opener.deck.next(); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); window.opener.deck.prev(); }
+      });
+      document.addEventListener('click', function() { window.opener.deck.next(); });
+    `;
+    this.notesWin.document.body.appendChild(notesScript);
     // Start timer
     this.notesStartTime = Date.now();
     this.notesTimer = setInterval(() => {
