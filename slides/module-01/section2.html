@@ -267,28 +267,26 @@ const deck = {
   openNotes() {
     this.notesWin = window.open('', 'speaker-notes', 'width=1000,height=700');
     this.notesWin.document.write(`<html><head><title>Speaker Notes</title><style>
-      body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;}
-      .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid #2e3350;padding-bottom:0.75rem;}
+      body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;display:flex;flex-direction:column;height:100vh;box-sizing:border-box;}
+      .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;flex-shrink:0;}
       .timer{font-family:'JetBrains Mono',monospace;font-size:1.4rem;color:#4f8ef7;}
       .slide-num{font-size:0.85rem;color:#8b90a8;}
-      .slides-row{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem;}
-      .slide-frame{background:#000;border:1px solid #2e3350;border-radius:8px;overflow:hidden;position:relative;}
+      .notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;flex:1;overflow-y:auto;padding-bottom:1rem;border-bottom:1px solid #2e3350;margin-bottom:0.75rem;}
+      .slides-row{display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;flex-shrink:0;}
+      .slide-frame{background:#000;border:1px solid #2e3350;border-radius:6px;overflow:hidden;position:relative;aspect-ratio:16/9;}
       .slide-frame.current{border-color:#4f8ef7;border-width:2px;}
       .slide-frame h3{position:absolute;top:4px;left:8px;font-size:0.6rem;color:#8b90a8;text-transform:uppercase;letter-spacing:0.08em;z-index:1;}
-      .slide-frame iframe{width:100%;height:100%;border:none;pointer-events:none;transform-origin:0 0;}
-      .current-frame{aspect-ratio:16/9;}
-      .next-frame{aspect-ratio:16/9;}
-      .notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;max-height:35vh;overflow-y:auto;padding-top:0.5rem;border-top:1px solid #2e3350;}
+      .slide-frame iframe{width:200%;height:200%;border:none;pointer-events:none;transform:scale(0.5);transform-origin:0 0;}
     </style></head><body>
       <div class="top">
         <span class="slide-num" id="nn-slide">1 / 4</span>
         <span class="timer" id="nn-timer">00:00</span>
       </div>
-      <div class="slides-row">
-        <div class="slide-frame current current-frame"><h3>Current</h3><iframe id="nn-current"></iframe></div>
-        <div class="slide-frame next-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
-      </div>
       <div class="notes-content" id="nn-notes"></div>
+      <div class="slides-row">
+        <div class="slide-frame current"><h3>Current</h3><iframe id="nn-current"></iframe></div>
+        <div class="slide-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
+      </div>
     </body></html>`);
     this.notesWin.document.close();
     // Start timer
