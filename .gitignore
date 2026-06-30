@@ -18,10 +18,14 @@ dist/
 credentials
 
 # Data files (large, generated separately)
-data/*.parquet
+# Parquet files ARE committed (canonical format for learners)
 data/*.csv
 data/*.sql
 data/*.json
+data/*.jsonl
+
+# Video files
+videos/*
 
 # Keep the data directory itself
 !data/.gitkeep
@@ -35,3 +39,10 @@ data/*.json
 
 # CloudFormation packaged templates
 cloudformation/packaged-*.yaml
+
+# Kiro files
+.kiro/
+CLAUDE.md
+
+# Internal tooling (data generation scripts, not for learners)
+scripts/data-generation/
