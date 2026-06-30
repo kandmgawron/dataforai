@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1 Video 2: Environment Setup — From RAG Prototype to Production</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8b90a8;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; padding: 56px 72px; flex-direction: column; justify-content: center; }
+  .slide.active { display: flex; }
+  .progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s ease; }
+  .counter { position: fixed; bottom: 16px; right: 24px; font-size: 12px; color: var(--text-muted); z-index: 100; font-family: var(--mono); }
+  h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
+  .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; font-size: 1.05rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
+  .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
+  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; font-family: var(--mono); font-size: 0.95rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
+  .cmd-block .comment { color: var(--text-muted); }
+  .cmd-block .prompt { color: var(--text-muted); user-select: none; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center; }
+  .stat-block .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
+  .stat-block .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+  .bullet-list { list-style: none; margin-top: 16px; }
+  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; font-size: 1.05rem; line-height: 1.6; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before { content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .bullet-list li strong { color: var(--text); }
+  .notes { display: none; }
+  #s-title { background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,0.08) 0%, transparent 60%), var(--bg); }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide active" id="s-title">
+    <div style="font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px;">Module 01 · Video 2</div>
+    <h1>Environment Setup</h1>
+    <h1 style="color: var(--text-muted); font-weight: 400;">Your Meridian stack,<br>from zero to running.</h1>
+    <div class="accent-line"></div>
+    <div style="margin-top: 24px; font-size: 1.05rem; color: var(--text-muted);">From RAG Prototype to Production: AI Data Architecture on AWS</div>
+    <div class="notes">
+      Brief intro then move to screen share quickly.
+
+      "Let's get your environment set up. By the end of this video you'll have Meridian's full stack running on your own AWS account — Aurora, OpenSearch, DynamoDB, Valkey, the Ridge websites, all the data loaded. Takes about 30 minutes, mostly waiting for CloudFormation. I'll walk you through it, then show you around the sites and point out the data consistency problems we're going to solve."
+    </div>
+  </div>
+
+  <!-- SLIDE 2: WHAT YOU'RE DEPLOYING -->
+  <div class="slide" id="s-overview">
+    <div class="label">What you're building</div>
+    <h2>Two stacks, 30 minutes, under £2</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="card">
+          <div style="color: var(--accent); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-base</div>
+          <p style="font-size: 1.05rem; line-height: 1.6;">Aurora PostgreSQL · OpenSearch Serverless · DynamoDB · Valkey · S3 · VPC · IAM</p>
+        </div>
+        <div class="card">
+          <div style="color: var(--accent2); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">meridian-web</div>
+          <p style="font-size: 1.05rem; line-height: 1.6;">Ridge Assist · Ridge Insight · API Gateway · Lambda</p>
+        </div>
+      </div>
+      <div>
+        <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
+          <div class="stat-block"><div class="stat-num">25k</div><div class="stat-label">Products</div></div>
+          <div class="stat-block"><div class="stat-num">200k</div><div class="stat-label">Reviews</div></div>
+          <div class="stat-block"><div class="stat-num">5k</div><div class="stat-label">Customers</div></div>
+          <div class="stat-block"><div class="stat-num">50k</div><div class="stat-label">Conversations</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout callout-warn" style="margin-top: 24px;">
+      <strong>Always tear down.</strong> <code>make destroy-all</code> when done. Forgetting costs £100+/week.
+    </div>
+    <div class="notes">
+      Show this slide briefly then switch to terminal.
+
+      "Two CloudFormation stacks. Base gives you all the data infrastructure. Web gives you the Ridge frontends and API. Total data: 25,000 products, 200,000 reviews, 5,000 customers, 50,000 conversations, 40 policy documents. Under two quid to deploy. But leave it running accidentally and it adds up fast — always tear down."
+
+      SWITCH TO TERMINAL. Run through the commands live:
+      1. Show the repo structure (ls)
+      2. aws configure --profile ridge-course-dev (or show it's already done)
+      3. make deploy-base (let it run, talk over it)
+      4. make deploy-web
+      5. make seed-data
+      6. make status (show both stacks CREATE_COMPLETE)
+
+      While base is deploying (~15 min), explain what's being created. Show the CloudFormation console briefly — point out the OpenSearch collection, Aurora cluster, DynamoDB tables.
+
+      Once seed-data finishes, show make status output and the stack outputs (URLs).
+    </div>
+  </div>
+
+  <!-- SLIDE 3: THE COMMANDS -->
+  <div class="slide" id="s-commands">
+    <div class="label">The full setup</div>
+    <h2>Six commands</h2>
+    <div class="accent-line"></div>
+    <div class="cmd-block">
+      <span class="comment"># Clone and install</span><br>
+      <span class="prompt">$ </span>git clone https://github.com/kandmgawron/dataforai.git && cd dataforai<br>
+      <span class="prompt">$ </span>python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt<br><br>
+      <span class="comment"># Deploy and load</span><br>
+      <span class="prompt">$ </span>make deploy-base<br>
+      <span class="prompt">$ </span>make deploy-web<br>
+      <span class="prompt">$ </span>make seed-data<br><br>
+      <span class="comment"># When done</span><br>
+      <span class="prompt">$ </span>make destroy-all
+    </div>
+    <div class="callout" style="margin-top: 16px;">
+      Full details in <code>SETUP.md</code>. Seed is idempotent — safe to re-run.
+    </div>
+    <div class="notes">
+      Show this slide as a reference, then switch to the browser to demo Ridge Assist and Ridge Insight.
+
+      DEMO FLOW — RIDGE ASSIST (customer shop):
+      1. Open the Ridge Assist URL
+      2. Browse products — show the category filters work
+      3. Search "waterproof jacket" — show results come from OpenSearch
+      4. Click a product — show the full detail page with raw supplier attributes
+      5. Show the colour filter: type "red" — some results. Type "fiery_red" — different results. "Why? Because the data uses inconsistent colour naming from suppliers."
+      6. Search for "backpack for a week in Scotland" — zero results. "This is a natural language query. BM25 keyword search can't understand intent. That's what we fix with embeddings and vector search."
+      7. Try the chat widget — submit a question, show "a member of our team will respond shortly"
+
+      DEMO FLOW — RIDGE INSIGHT (internal CRM):
+      1. Open Ridge Insight URL
+      2. Show the conversations queue — the question you just submitted appears
+      3. Search for a customer (try "CUST-00001")
+      4. Show their profile, purchase history, conversation history
+      5. Browse policy documents
+
+      DEMO FLOW — DATA DRIFT:
+      1. Search for "Snowdon Ghost" — finds "Snowdon Ghost Tent" by Basecamp at £299.99 (SKU: MER-DRIFT-001)
+      2. Click it — "Product not found". This product exists in the OpenSearch search index but NOT in Aurora.
+      3. Explain: "This is data drift. Meridian's search index and database have fallen out of sync. A product was added to the catalogue and indexed for search, but the database record was never created — or it was deleted and the index wasn't updated. This happens in production when you write to two systems without transactional guarantees. We'll fix this with zero-ETL integration in a later module."
+
+      DEMO FLOW — DATA QUALITY ISSUES:
+      1. Click any product, scroll to "Raw Supplier Attributes"
+      2. Point out: colours stored as "forest_green" with underscores vs simple "red"
+      3. Note that gender and materials exist in the source but aren't in the database schema
+      4. "These are the kind of real-world data problems that make traditional search fail. A customer searching for 'red jacket' won't find a product tagged 'crimson' or 'fiery_red'. That's why we need semantic understanding."
+    </div>
+  </div>
+
+  <!-- SLIDE 4: WHAT'S NEXT -->
+  <div class="slide" id="s-next">
+    <div class="label">Coming up</div>
+    <h2>Video 3: Embeddings on AWS</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li>Why <strong>"red" and "fiery_red"</strong> can become neighbours in vector space</li>
+            <li>Titan Embed v2, Cohere, and <strong>when to look at SageMaker</strong></li>
+            <li>Generating your first embeddings against the <strong>Meridian catalogue</strong></li>
+          </ul>
+        </div>
+        <div class="callout" style="margin-top: 16px;">
+          Keep your stacks running if you're continuing straight to Video 3. Otherwise, <code>make destroy-all</code>.
+        </div>
+      </div>
+      <div>
+        <!-- Keyword vs Semantic search comparison -->
+        <svg viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+          <!-- Keyword search side -->
+          <rect x="10" y="10" width="180" height="140" rx="10" fill="#1a1d27" stroke="#2e3350"/>
+          <text x="100" y="36" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#e05c5c" letter-spacing="0.08em">KEYWORD SEARCH</text>
+          <rect x="30" y="52" width="140" height="28" rx="6" fill="#22263a" stroke="#2e3350"/>
+          <text x="100" y="71" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#8b90a8">"backpack Scotland"</text>
+          <text x="100" y="105" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#e05c5c">✗ 0 results</text>
+          <text x="100" y="126" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" fill="#8b90a8">No exact token match</text>
+          <!-- Semantic search side -->
+          <rect x="210" y="10" width="180" height="140" rx="10" fill="#1a1d27" stroke="#2e3350"/>
+          <text x="300" y="36" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#3ecf8e" letter-spacing="0.08em">SEMANTIC SEARCH</text>
+          <rect x="230" y="52" width="140" height="28" rx="6" fill="#22263a" stroke="#2e3350"/>
+          <text x="300" y="71" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#8b90a8">"backpack Scotland"</text>
+          <text x="300" y="105" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#3ecf8e">✓ 12 results</text>
+          <text x="300" y="126" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" fill="#8b90a8">Hiking, mountaineering, waterproof</text>
+          <!-- Vector space visualisation -->
+          <rect x="10" y="170" width="380" height="140" rx="10" fill="#1a1d27" stroke="#2e3350"/>
+          <text x="200" y="192" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="600" fill="#4f8ef7" letter-spacing="0.08em">VECTOR SPACE</text>
+          <!-- Cluster: reds -->
+          <circle cx="90" cy="245" r="5" fill="#e05c5c" opacity="0.9"/>
+          <text x="90" y="265" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">red</text>
+          <circle cx="115" cy="235" r="5" fill="#e05c5c" opacity="0.7"/>
+          <text x="115" y="225" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">crimson</text>
+          <circle cx="72" cy="232" r="5" fill="#e05c5c" opacity="0.7"/>
+          <text x="72" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">fiery_red</text>
+          <!-- Cluster: outdoor -->
+          <circle cx="280" cy="250" r="5" fill="#3ecf8e" opacity="0.9"/>
+          <text x="280" y="270" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">hiking</text>
+          <circle cx="310" cy="238" r="5" fill="#3ecf8e" opacity="0.7"/>
+          <text x="310" y="228" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">Scotland</text>
+          <circle cx="340" cy="255" r="5" fill="#3ecf8e" opacity="0.7"/>
+          <text x="340" y="275" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">backpack</text>
+          <circle cx="295" cy="265" r="5" fill="#3ecf8e" opacity="0.5"/>
+          <text x="295" y="285" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">waterproof</text>
+          <!-- Cluster: blue -->
+          <circle cx="190" cy="280" r="5" fill="#4f8ef7" opacity="0.7"/>
+          <text x="190" y="298" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">navy</text>
+          <circle cx="210" cy="270" r="5" fill="#4f8ef7" opacity="0.5"/>
+          <text x="210" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8eaf0">blue</text>
+        </svg>
+      </div>
+    </div>
+    <div class="notes">
+      Quick sign-off.
+
+      "Have a play with Ridge Assist. Try to break the search. Notice what fails and what works. That frustration — that's exactly what we fix in the next video. Embeddings give us semantic understanding: 'red' becomes close to 'crimson' and 'fiery_red' in vector space. 'Backpack for Scotland' starts matching products tagged for hiking and mountaineering. See you in Video 3."
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- PROGRESS + COUNTER -->
+<div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="counter" id="counter">1 / 4</div>
+
+<!-- NOTES open in separate window via N key -->
+<script>
+const channel = new BroadcastChannel('meridian-slides');
+const deck = {
+  slides: Array.from(document.querySelectorAll('.slide')),
+  cur: 0,
+  notesWin: null,
+  go(n) {
+    if (n < 0 || n >= this.slides.length) return;
+    this.slides[this.cur].classList.remove('active');
+    this.cur = n;
+    this.slides[this.cur].classList.add('active');
+    document.getElementById('counter').textContent = (this.cur + 1) + ' / ' + this.slides.length;
+    document.getElementById('progress-fill').style.width = ((this.cur + 1) / this.slides.length * 100) + '%';
+    channel.postMessage({type: 'NAVIGATE', slide: this.cur, total: this.slides.length});
+    this.sendNotesData();
+  },
+  next() { this.go(this.cur + 1); },
+  prev() { this.go(this.cur - 1); },
+  sendNotesData() {
+    const notes = this.slides[this.cur].querySelector('.notes');
+    const curClone = this.slides[this.cur].cloneNode(true);
+    const n = curClone.querySelector('.notes'); if (n) n.remove();
+    const nextHtml = this.cur + 1 < this.slides.length ? (() => { const c = this.slides[this.cur+1].cloneNode(true); const nn = c.querySelector('.notes'); if(nn) nn.remove(); return c.innerHTML; })() : null;
+    const styles = document.querySelector('style').textContent;
+    channel.postMessage({
+      type: 'NOTES_DATA',
+      slide: this.cur,
+      total: this.slides.length,
+      notesText: notes ? notes.textContent.trim() : '',
+      currentHtml: curClone.innerHTML,
+      nextHtml: nextHtml,
+      styles: styles
+    });
+  },
+  openNotes() {
+    const notesHtml = `<!DOCTYPE html><html><head><title>Speaker Notes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;}
+.timer{font-family:'JetBrains Mono',monospace;font-size:1.4rem;color:#4f8ef7;}
+.slide-num{font-size:0.85rem;color:#8b90a8;}
+.notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;padding:0.75rem;border:1px solid #2e3350;border-radius:6px;overflow:auto;resize:both;height:250px;}
+.slides-row{display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-top:0.75rem;flex:1;min-height:0;}
+.slide-frame{background:#000;border:1px solid #2e3350;border-radius:6px;overflow:hidden;position:relative;min-height:0;}
+.slide-frame.current{border-color:#4f8ef7;border-width:2px;}
+.slide-frame h3{position:absolute;top:4px;left:8px;font-size:0.6rem;color:#8b90a8;text-transform:uppercase;letter-spacing:0.08em;z-index:1;}
+.slide-frame iframe{width:100%;height:100%;border:none;pointer-events:none;transform-origin:0 0;}
+.nav-btns{display:flex;gap:0.5rem;margin-top:0.75rem;}
+.nav-btns button{flex:1;padding:0.6rem;background:#1a1d27;border:1px solid #2e3350;border-radius:6px;color:#e8eaf0;cursor:pointer;font-size:0.9rem;font-weight:600;}
+.nav-btns button:hover{background:#22263a;border-color:#4f8ef7;}
+</style></head><body>
+<div class="top"><span class="slide-num" id="nn-slide">1 / ?</span><span class="timer" id="nn-timer">00:00</span></div>
+<div class="notes-content" id="nn-notes">Press N on the presentation to connect.</div>
+<div class="slides-row">
+<div class="slide-frame current"><h3>Current</h3><iframe id="nn-current"></iframe></div>
+<div class="slide-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
+</div>
+<div class="nav-btns"><button id="nn-prev">\u2190 Previous</button><button id="nn-next-btn">Next \u2192</button></div>
+<script>
+var ch = new BroadcastChannel('meridian-slides');
+var startTime = Date.now();
+setInterval(function(){
+  var s = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('nn-timer').textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+},1000);
+ch.onmessage = function(e){
+  var d = e.data;
+  if(d.type==='NOTES_DATA'){
+    document.getElementById('nn-slide').textContent=(d.slide+1)+' / '+d.total;
+    document.getElementById('nn-notes').textContent=d.notesText;
+    var curF=document.getElementById('nn-current');
+    var nxtF=document.getElementById('nn-next');
+    curF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.currentHtml+'</div></body></html>';
+    if(d.nextHtml){nxtF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.nextHtml+'</div></body></html>';}
+    else{nxtF.srcdoc='<html><body style="background:#0f1117;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><p style="color:#8b90a8;font-family:sans-serif;">End</p></body></html>';}
+  }
+};
+document.getElementById('nn-prev').addEventListener('click',function(){ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();});
+document.getElementById('nn-next-btn').addEventListener('click',function(){ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();});
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();}
+  if(e.key==='ArrowLeft'){e.preventDefault();ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();}
+});
+<\/script></body></html>`;
+    this.notesWin = window.open('', 'speaker-notes', 'width=1000,height=700');
+    this.notesWin.document.write(notesHtml);
+    this.notesWin.document.close();
+    this.sendNotesData();
+  }
+};
+// Listen for commands from notes window
+channel.onmessage = function(e) {
+  if (e.data.type === 'NEXT') deck.next();
+  if (e.data.type === 'PREV') deck.prev();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+  if (e.key === 'n' || e.key === 'N') { deck.openNotes(); }
+});
+document.querySelector('.deck').addEventListener('click', () => deck.next());
+deck.go(0);
+</script>
+</body>
+</html>

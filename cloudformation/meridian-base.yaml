@@ -1,0 +1,996 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Meridian Outdoor Co. — Base infrastructure stack for the Ridge AI course
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Project
+        Parameters:
+          - ProjectName
+          - Environment
+    ParameterLabels:
+      ProjectName:
+        default: Project Name
+      Environment:
+        default: Environment
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: meridian
+    Description: Project name used as a prefix for resource naming
+  Environment:
+    Type: String
+    Default: dev
+    Description: Deployment environment (dev, staging, prod)
+
+# ---------------------------------------------------------------------------
+# VPC
+# ---------------------------------------------------------------------------
+Resources:
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc-${Environment}'
+
+  # Public subnets
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-1-${Environment}'
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-2-${Environment}'
+
+  # Private subnets
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-1-${Environment}'
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-2-${Environment}'
+
+  # Internet Gateway
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw-${Environment}'
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  # Public route table
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-rt-${Environment}'
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # NAT Gateway (single AZ — cost saving for course)
+
+  NatEip:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-nat-eip-${Environment}'
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      AllocationId: !GetAtt NatEip.AllocationId
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-nat-${Environment}'
+
+  # Private route table
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-rt-${Environment}'
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ---------------------------------------------------------------------------
+  # Security Groups
+  # ---------------------------------------------------------------------------
+
+  LambdaSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-lambda-sg-${Environment}'
+
+  AuroraSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Aurora PostgreSQL cluster
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSG
+          Description: Allow PostgreSQL from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-aurora-sg-${Environment}'
+
+  ElastiCacheSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ElastiCache Valkey
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref LambdaSG
+          Description: Allow Valkey from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-elasticache-sg-${Environment}'
+
+  VpcEndpointSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for VPC Interface Endpoints
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/16
+          Description: Allow HTTPS from within VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpce-sg-${Environment}'
+
+  # ---------------------------------------------------------------------------
+  # VPC Endpoints
+  # ---------------------------------------------------------------------------
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+        - !Ref PublicRouteTable
+
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VpcEndpointSG
+      PrivateDnsEnabled: true
+
+  # ---------------------------------------------------------------------------
+  # KMS
+  # ---------------------------------------------------------------------------
+
+  MeridianKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub 'KMS CMK for Meridian ${Environment} resources'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnableRootAccountAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-key-${Environment}'
+
+  MeridianKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/meridian-${Environment}'
+      TargetKeyId: !Ref MeridianKey
+
+  # ---------------------------------------------------------------------------
+  # IAM Roles (defined before KMS key policy references them via DependsOn)
+  # ---------------------------------------------------------------------------
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: MeridianLambdaInline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action: 'logs:*'
+                Resource: '*'
+              - Sid: S3DataAndPolicies
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub '${DataBucket.Arn}/*'
+                  - !GetAtt PolicyDocsBucket.Arn
+                  - !Sub '${PolicyDocsBucket.Arn}/*'
+              - Sid: SecretsManager
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !GetAtt AuroraCredentials.SecretArn
+              - Sid: RdsDataApi
+                Effect: Allow
+                Action: 'rds-data:*'
+                Resource: '*'
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt SessionsTable.Arn
+                  - !Sub '${SessionsTable.Arn}/index/*'
+                  - !GetAtt ConversationsTable.Arn
+                  - !Sub '${ConversationsTable.Arn}/index/*'
+                  - !GetAtt MemoryTable.Arn
+                  - !Sub '${MemoryTable.Arn}/index/*'
+              - Sid: BedrockInvoke
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource:
+                  - 'arn:aws:bedrock:eu-west-1::foundation-model/*'
+                  - !Sub 'arn:aws:bedrock:eu-west-1:${AWS::AccountId}:inference-profile/*'
+              - Sid: OpenSearchServerless
+                Effect: Allow
+                Action: 'aoss:*'
+                Resource: '*'
+
+  NotebookRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-notebook-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MeridianNotebookInline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: BedrockInvoke
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: 'arn:aws:bedrock:eu-west-1::foundation-model/*'
+              - Sid: S3AllBuckets
+                Effect: Allow
+                Action: 's3:*'
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub '${DataBucket.Arn}/*'
+                  - !GetAtt PolicyDocsBucket.Arn
+                  - !Sub '${PolicyDocsBucket.Arn}/*'
+                  - !GetAtt ExportsBucket.Arn
+                  - !Sub '${ExportsBucket.Arn}/*'
+              - Sid: SecretsManager
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !GetAtt AuroraCredentials.SecretArn
+              - Sid: RdsDataApi
+                Effect: Allow
+                Action:
+                  - rds-data:ExecuteStatement
+                  - rds-data:BatchExecuteStatement
+                Resource: '*'
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Sid: CloudWatch
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: '*'
+              - Sid: OpenSearchServerless
+                Effect: Allow
+                Action: 'aoss:*'
+                Resource: '*'
+
+  # ---------------------------------------------------------------------------
+  # S3 Buckets
+  # ---------------------------------------------------------------------------
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'meridian-data-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt MeridianKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-data-${Environment}'
+
+  PolicyDocsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'meridian-policies-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt MeridianKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-policies-${Environment}'
+
+  ExportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'meridian-exports-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt MeridianKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-exports-${Environment}'
+
+  # ---------------------------------------------------------------------------
+  # Secrets Generator — Lambda custom resource creates a random SM secret
+  # so the CF execution user (ridge-course-dev) never needs secretsmanager:CreateSecret
+  # ---------------------------------------------------------------------------
+
+  SecretsGeneratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-secrets-gen-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SecretsGeneratorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: logs:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:UpdateSecret
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ProjectName}/aurora/${Environment}*'
+
+  SecretsGeneratorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-secrets-gen-${Environment}'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt SecretsGeneratorRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json, boto3, string, urllib.request
+          from botocore.exceptions import ClientError
+          from secrets import choice
+          def respond(event, context, status, data={}, physical_id=None):
+            body = json.dumps({
+              'Status': status,
+              'Reason': 'See CloudWatch',
+              'PhysicalResourceId': physical_id or context.log_stream_name,
+              'StackId': event['StackId'],
+              'RequestId': event['RequestId'],
+              'LogicalResourceId': event['LogicalResourceId'],
+              'Data': data
+            }).encode()
+            req = urllib.request.Request(
+              event['ResponseURL'], data=body,
+              headers={'Content-Type': ''}, method='PUT')
+            urllib.request.urlopen(req)
+          def handler(event, context):
+            sm = boto3.client('secretsmanager')
+            p = event['ResourceProperties']
+            name = p['SecretName']
+            user = p.get('Username', 'meridian_admin')
+            try:
+              rt = event['RequestType']
+              if rt == 'Create':
+                alpha = string.ascii_letters + string.digits + '!#$%^&*()-_+'
+                pw = ''.join(choice(alpha) for _ in range(32))
+                try:
+                  arn = sm.create_secret(
+                    Name=name,
+                    Description='Aurora credentials for Meridian (CF-managed)',
+                    SecretString=json.dumps({'username':user,'password':pw,'dbname':'meridian','port':'5432'})
+                  )['ARN']
+                except ClientError as e:
+                  if e.response['Error']['Code'] == 'ResourceExistsException':
+                    arn = sm.describe_secret(SecretId=name)['ARN']
+                  else:
+                    raise
+                respond(event, context, 'SUCCESS', {'SecretArn': arn, 'Password': pw}, arn)
+              elif rt == 'Delete':
+                try:
+                  sm.delete_secret(SecretId=name, ForceDeleteWithoutRecovery=True)
+                except Exception:
+                  pass
+                respond(event, context, 'SUCCESS', {})
+              else:
+                arn = sm.describe_secret(SecretId=name)['ARN']
+                respond(event, context, 'SUCCESS', {'SecretArn': arn}, arn)
+            except Exception as e:
+              respond(event, context, 'FAILED', {'Error': str(e)})
+
+  AuroraCredentials:
+    Type: Custom::AuroraCredentials
+    Properties:
+      ServiceToken: !GetAtt SecretsGeneratorFunction.Arn
+      SecretName: !Sub '${ProjectName}/aurora/${Environment}'
+      Username: meridian_admin
+
+  # ---------------------------------------------------------------------------
+  # Aurora PostgreSQL Serverless v2
+  # ---------------------------------------------------------------------------
+
+  AuroraSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for Aurora Meridian cluster
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-aurora-subnet-group-${Environment}'
+
+  AuroraClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: Aurora PostgreSQL 16 parameter group for Meridian
+      Family: aurora-postgresql16
+      Parameters:
+        shared_preload_libraries: pg_stat_statements
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-aurora-cpg-${Environment}'
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    DependsOn: AuroraCredentials
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: '16.6'
+      DatabaseName: meridian
+      MasterUsername: meridian_admin
+      MasterUserPassword: !GetAtt AuroraCredentials.Password
+      DBSubnetGroupName: !Ref AuroraSubnetGroup
+      DBClusterParameterGroupName: !Ref AuroraClusterParameterGroup
+      VpcSecurityGroupIds:
+        - !Ref AuroraSG
+      StorageEncrypted: true
+      KmsKeyId: !Ref MeridianKey
+      EnableHttpEndpoint: true
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0
+        MaxCapacity: 8
+      DeletionProtection: false
+      BackupRetentionPeriod: 1
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-aurora-${Environment}'
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      DBClusterIdentifier: !Ref AuroraCluster
+      PubliclyAccessible: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-aurora-instance-${Environment}'
+
+  # ---------------------------------------------------------------------------
+  # ElastiCache Valkey
+  # ---------------------------------------------------------------------------
+
+  ElastiCacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Private subnets for Meridian ElastiCache Valkey
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  ElastiCacheCluster:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupId: !Sub '${ProjectName}-valkey-${Environment}'
+      ReplicationGroupDescription: !Sub 'Meridian Valkey cluster (${Environment})'
+      Engine: valkey
+      EngineVersion: '8.0'
+      CacheNodeType: cache.t3.micro
+      NumCacheClusters: 1
+      CacheSubnetGroupName: !Ref ElastiCacheSubnetGroup
+      SecurityGroupIds:
+        - !Ref ElastiCacheSG
+      AutomaticFailoverEnabled: false
+      TransitEncryptionEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-valkey-${Environment}'
+
+  # ---------------------------------------------------------------------------
+  # DynamoDB Tables
+  # ---------------------------------------------------------------------------
+
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'meridian-sessions-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref MeridianKey
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sessions-${Environment}'
+
+  ConversationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'meridian-conversations-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref MeridianKey
+      AttributeDefinitions:
+        - AttributeName: customer_id
+          AttributeType: S
+        - AttributeName: conversation_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: customer_id
+          KeyType: HASH
+        - AttributeName: conversation_id
+          KeyType: RANGE
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-conversations-${Environment}'
+
+  MemoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'meridian-memory-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref MeridianKey
+      AttributeDefinitions:
+        - AttributeName: customer_id
+          AttributeType: S
+        - AttributeName: memory_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: customer_id
+          KeyType: HASH
+        - AttributeName: memory_key
+          KeyType: RANGE
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-memory-${Environment}'
+
+  # ---------------------------------------------------------------------------
+  # OpenSearch Serverless (NextGen, scale-to-zero)
+  # ---------------------------------------------------------------------------
+
+  OpenSearchCollectionGroup:
+    Type: AWS::OpenSearchServerless::CollectionGroup
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}'
+      Description: !Sub 'Meridian product search and vector store (${Environment})'
+      Generation: NEXTGEN
+      StandbyReplicas: ENABLED
+      CapacityLimits:
+        MinIndexingCapacityInOcu: 0
+        MinSearchCapacityInOcu: 0
+        MaxIndexingCapacityInOcu: 4
+        MaxSearchCapacityInOcu: 4
+
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub '${ProjectName}-products-${Environment}'
+      Type: encryption
+      Policy: !Sub |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": ["collection/${ProjectName}-products-${Environment}"]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  OpenSearchNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub '${ProjectName}-products-net-${Environment}'
+      Type: network
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/${ProjectName}-products-${Environment}"]
+              },
+              {
+                "ResourceType": "dashboard",
+                "Resource": ["collection/${ProjectName}-products-${Environment}"]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  OpenSearchCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn:
+      - OpenSearchEncryptionPolicy
+      - OpenSearchNetworkPolicy
+    Properties:
+      Name: !Sub '${ProjectName}-products-${Environment}'
+      Type: VECTORSEARCH
+      Description: !Sub 'Meridian product catalogue — keyword and vector search (${Environment})'
+      CollectionGroupName: !Sub '${ProjectName}-${Environment}'
+
+  OpenSearchAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: OpenSearchCollection
+    Properties:
+      Name: !Sub '${ProjectName}-products-${Environment}'
+      Type: data
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "index",
+                "Resource": ["index/${ProjectName}-products-${Environment}/*"],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DescribeIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              },
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/${ProjectName}-products-${Environment}"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              }
+            ],
+            "Principal": [
+              "${NotebookRole.Arn}",
+              "${LambdaExecutionRole.Arn}",
+              "arn:aws:sts::${AWS::AccountId}:assumed-role/${LambdaExecutionRole}/*",
+              "arn:aws:sts::${AWS::AccountId}:assumed-role/${NotebookRole}/*",
+              "arn:aws:iam::${AWS::AccountId}:root"
+            ]
+          }
+        ]
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Groups
+  # ---------------------------------------------------------------------------
+
+  LambdaSeedLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /meridian/lambda/seed
+      RetentionInDays: 14
+
+  LambdaEmbeddingsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /meridian/lambda/embeddings
+      RetentionInDays: 14
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub 'meridian-VpcId-${Environment}'
+
+  PrivateSubnet1Id:
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub 'meridian-PrivateSubnet1Id-${Environment}'
+
+  PrivateSubnet2Id:
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub 'meridian-PrivateSubnet2Id-${Environment}'
+
+  PublicSubnet1Id:
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub 'meridian-PublicSubnet1Id-${Environment}'
+
+  PublicSubnet2Id:
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub 'meridian-PublicSubnet2Id-${Environment}'
+
+  LambdaSGId:
+    Value: !Ref LambdaSG
+    Export:
+      Name: !Sub 'meridian-LambdaSGId-${Environment}'
+
+  AuroraClusterEndpoint:
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: !Sub 'meridian-AuroraClusterEndpoint-${Environment}'
+
+  AuroraClusterArn:
+    Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+    Export:
+      Name: !Sub 'meridian-AuroraClusterArn-${Environment}'
+
+  AuroraSecretArn:
+    Value: !GetAtt AuroraCredentials.SecretArn
+    Export:
+      Name: !Sub 'meridian-AuroraSecretArn-${Environment}'
+
+  DataBucketName:
+    Value: !Ref DataBucket
+    Export:
+      Name: !Sub 'meridian-DataBucketName-${Environment}'
+
+  PolicyDocsBucketName:
+    Value: !Ref PolicyDocsBucket
+    Export:
+      Name: !Sub 'meridian-PolicyDocsBucketName-${Environment}'
+
+  ExportsBucketName:
+    Value: !Ref ExportsBucket
+    Export:
+      Name: !Sub 'meridian-ExportsBucketName-${Environment}'
+
+  LambdaExecutionRoleArn:
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub 'meridian-LambdaExecutionRoleArn-${Environment}'
+
+  NotebookRoleArn:
+    Value: !GetAtt NotebookRole.Arn
+    Export:
+      Name: !Sub 'meridian-NotebookRoleArn-${Environment}'
+
+  KmsKeyArn:
+    Value: !GetAtt MeridianKey.Arn
+    Export:
+      Name: !Sub 'meridian-KmsKeyArn-${Environment}'
+
+  SessionsTableName:
+    Value: !Ref SessionsTable
+    Export:
+      Name: !Sub 'meridian-SessionsTableName-${Environment}'
+
+  ConversationsTableName:
+    Value: !Ref ConversationsTable
+    Export:
+      Name: !Sub 'meridian-ConversationsTableName-${Environment}'
+
+  MemoryTableName:
+    Value: !Ref MemoryTable
+    Export:
+      Name: !Sub 'meridian-MemoryTableName-${Environment}'
+
+  ElastiCacheEndpoint:
+    Value: !GetAtt ElastiCacheCluster.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub 'meridian-ElastiCacheEndpoint-${Environment}'
+
+  OpenSearchCollectionEndpoint:
+    Value: !GetAtt OpenSearchCollection.CollectionEndpoint
+    Export:
+      Name: !Sub 'meridian-OpenSearchCollectionEndpoint-${Environment}'
+
+  OpenSearchCollectionArn:
+    Value: !GetAtt OpenSearchCollection.Arn
+    Export:
+      Name: !Sub 'meridian-OpenSearchCollectionArn-${Environment}'
