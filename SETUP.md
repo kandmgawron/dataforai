@@ -14,7 +14,7 @@ By the end of this guide you will have:
 - Python 3.11+ installed with all dependencies
 - An AWS CLI profile called `ridge-course-dev` pointing at your AWS account
 - The Meridian CloudFormation stacks deployed (VPC, Aurora, DynamoDB, S3, Valkey, API, frontends)
-- All Meridian data loaded (40,000 products, 5,000 customers, 200,000 reviews, 50,000 conversations, 40 policy documents)
+- All Meridian data loaded (22,550 products, 5,000 customers, 200,000 reviews, 50,000 conversations, 40 policy documents)
 - Ridge Assist and Ridge Insight running as static sites
 
 **Estimated time:** 30-45 minutes, most of which is waiting for AWS.
@@ -152,7 +152,7 @@ make seed-data
 
 This runs the following in order:
 
-1. `seed_products.py`: loads 40,000 products into Aurora (~2 min)
+1. `seed_products.py`: loads 22,550 products into Aurora + OpenSearch (~2 min, skips embeddings)
 2. `seed_customers.py`: loads 5,000 customers into Aurora (~2 min)
 3. `seed_reviews.py`: loads 200,000 reviews into Aurora (~10 min)
 4. `seed_conversations.py`: loads 50,000 conversations into DynamoDB (~2 min)
@@ -176,8 +176,8 @@ Then open Ridge Assist in your browser (URL from the `make deploy-web` output). 
 
 - Product grid with 40 products per page
 - Category filters working (Camping, Clothing, Climbing, etc.)
-- Search bar returning results
-- Chat widget in the bottom-right corner
+- Search bar returning results (powered by OpenSearch BM25)
+- Chat widget in the bottom-right corner (live two-way chat via DynamoDB sessions)
 
 Open Ridge Insight and verify:
 
