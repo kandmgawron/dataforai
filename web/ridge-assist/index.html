@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meridian Outdoor Co. — Life outdoors, done right.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <h1 class="logo">Meridian Outdoor Co.</h1>
+        <span class="tagline">Life outdoors, done right.</span>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search products…" aria-label="Search products">
+        <button id="search-btn" aria-label="Search">Search</button>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label for="filter-colour">Colour</label>
+        <input type="text" id="filter-colour" placeholder="e.g. red">
+      </div>
+      <div class="filter-group">
+        <label for="filter-price-min">Price £</label>
+        <input type="number" id="filter-price-min" placeholder="Min" min="0" step="1">
+        <span>–</span>
+        <input type="number" id="filter-price-max" placeholder="Max" min="0" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="filter-gender">Gender</label>
+        <select id="filter-gender">
+          <option value="">Any</option>
+          <option value="unisex">Unisex</option>
+          <option value="women">Women</option>
+          <option value="men">Men</option>
+        </select>
+      </div>
+      <button id="filter-btn" class="filter-apply">Apply Filters</button>
+    </div>
+    <nav class="category-nav" aria-label="Product categories">
+      <button class="cat-btn active" data-category="">All</button>
+      <button class="cat-btn" data-category="Camping & Cooking">Camping</button>
+      <button class="cat-btn" data-category="Climbing & Scrambling">Climbing</button>
+      <button class="cat-btn" data-category="Clothing">Clothing</button>
+      <button class="cat-btn" data-category="Footwear">Footwear</button>
+      <button class="cat-btn" data-category="Rucksacks & Bags">Rucksacks</button>
+      <button class="cat-btn" data-category="Sleeping">Sleeping</button>
+      <button class="cat-btn" data-category="Ski & Snowsports">Ski</button>
+      <button class="cat-btn" data-category="Tents & Shelters">Tents</button>
+      <button class="cat-btn" data-category="Accessories">Accessories</button>
+      <button class="cat-btn" data-category="Navigation & Safety">Navigation</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Product grid view -->
+    <section id="product-grid-section">
+      <div id="product-grid" class="product-grid"></div>
+      <div id="loading" class="loading" hidden>Loading…</div>
+      <div id="no-results" class="no-results" hidden>No products found.</div>
+    </section>
+
+    <!-- Product detail view -->
+    <section id="product-detail-section" hidden>
+      <button id="back-btn" class="back-btn">← Back to products</button>
+      <div id="product-detail"></div>
+    </section>
+  </main>
+
+  <!-- Chat widget -->
+  <div id="chat-widget" class="chat-widget">
+    <button id="chat-toggle" class="chat-toggle" aria-label="Open chat">💬</button>
+    <div id="chat-panel" class="chat-panel" hidden>
+      <div class="chat-header">
+        <span>Chat with us</span>
+        <button id="chat-close" aria-label="Close chat">✕</button>
+      </div>
+      <div id="chat-messages" class="chat-messages"></div>
+      <form id="chat-form" class="chat-form">
+        <input type="text" id="chat-input" placeholder="Ask a question…" aria-label="Type your message" required>
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
