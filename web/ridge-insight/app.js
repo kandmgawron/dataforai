@@ -95,27 +95,96 @@ async function loadCustomerDetail(id) {
   }
 }
 
-// --- Conversations ---
+// --- Conversations (Live Chat) ---
 const conversationsList = document.getElementById('conversations-list');
+let insightCurrentChat = null;
+let insightPollTimer = null;
 
 async function loadConversations() {
+  insightCurrentChat = null;
+  if (insightPollTimer) { clearInterval(insightPollTimer); insightPollTimer = null; }
   conversationsList.innerHTML = '<p class="subtitle">Loading…</p>';
   try {
-    const res = await fetch(`${API_BASE}/conversations`);
+    const res = await fetch(`${API_BASE}/chat`);
     const data = await res.json();
-    if (!data.length) { conversationsList.innerHTML = '<p class="subtitle">No conversations in queue.</p>'; return; }
-    conversationsList.innerHTML = data.map(cv => `
-      <div class="convo-card">
+    if (!data.length) { conversationsList.innerHTML = '<p class="subtitle">No active conversations.</p>'; return; }
+    conversationsList.innerHTML = data.map(c => `
+      <div class="convo-card" data-id="${esc(c.session_id)}">
         <div class="convo-header">
-          <span>${esc(cv.customer_id || 'Anonymous')} · ${esc(cv.channel || 'web_chat')}</span>
-          <span>${esc(cv.created_at || '')}</span>
+          <span>${esc(c.email)}</span>
+          <span>${esc(c.created_at || '')}</span>
         </div>
-        <p class="convo-msg">${esc(cv.message || cv.topic || '')}</p>
+        <p class="convo-msg">${esc(c.last_message || 'No messages yet')}</p>
       </div>
     `).join('');
+    conversationsList.querySelectorAll('.convo-card').forEach(card => {
+      card.addEventListener('click', () => openConversation(card.dataset.id));
+    });
   } catch {
     conversationsList.innerHTML = '<p class="subtitle">Error loading conversations.</p>';
   }
+}
+
+async function openConversation(sessionId) {
+  insightCurrentChat = sessionId;
+  conversationsList.innerHTML = '<p class="subtitle">Loading…</p>';
+  try {
+    const res = await fetch(`${API_BASE}/chat/${sessionId}`);
+    const data = await res.json();
+    renderConversationThread(data);
+    startInsightPoll(sessionId);
+  } catch {
+    conversationsList.innerHTML = '<p class="subtitle">Error loading conversation.</p>';
+  }
+}
+
+function renderConversationThread(data) {
+  const msgs = data.messages || [];
+  conversationsList.innerHTML = `
+    <button class="back-link" id="chat-back">← Back to conversations</button>
+    <p class="subtitle">${esc(data.email)} · ${esc(data.session_id)}</p>
+    <div id="chat-thread" class="chat-thread">
+      ${msgs.map(m => `<div class="msg ${m.role === 'customer' ? 'user' : 'system'}">${esc(m.text)}<span class="msg-ts">${esc(m.ts || '')}</span></div>`).join('')}
+    </div>
+    <form id="staff-reply-form" class="staff-reply-form">
+      <input type="text" id="staff-reply-input" placeholder="Type a reply…" autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  `;
+  document.getElementById('chat-back').addEventListener('click', loadConversations);
+  document.getElementById('staff-reply-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('staff-reply-input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    try {
+      await fetch(`${API_BASE}/chat/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: insightCurrentChat, message: text, role: 'staff' })
+      });
+      // Immediately append to thread
+      const thread = document.getElementById('chat-thread');
+      thread.innerHTML += `<div class="msg system">${esc(text)}<span class="msg-ts">just now</span></div>`;
+      thread.scrollTop = thread.scrollHeight;
+    } catch { /* best effort */ }
+  });
+  const thread = document.getElementById('chat-thread');
+  if (thread) thread.scrollTop = thread.scrollHeight;
+}
+
+function startInsightPoll(sessionId) {
+  if (insightPollTimer) clearInterval(insightPollTimer);
+  insightPollTimer = setInterval(async () => {
+    if (insightCurrentChat !== sessionId) return;
+    try {
+      const res = await fetch(`${API_BASE}/chat/${sessionId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      renderConversationThread(data);
+    } catch { /* ignore poll errors */ }
+  }, 5000);
 }
 
 // --- Products ---

@@ -26,6 +26,7 @@ SECRET_ARN = os.environ.get("AURORA_SECRET_ARN", "")
 DATABASE = os.environ.get("DATABASE_NAME", "meridian")
 CONVERSATIONS_TABLE = os.environ.get("CONVERSATIONS_TABLE", "meridian-conversations")
 POLICIES_BUCKET = os.environ.get("POLICIES_BUCKET", "")
+SESSIONS_TABLE = os.environ.get("SESSIONS_TABLE", "meridian-sessions-dev")
 OPENSEARCH_ENDPOINT = os.environ.get("OPENSEARCH_ENDPOINT", "")
 OPENSEARCH_INDEX = os.environ.get("OPENSEARCH_INDEX", "products")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-1")
@@ -66,6 +67,17 @@ def handler(event, context):
     if re.match(r"^/reviews/[\w\-]+$", path) and method == "GET":
         sku = path.split("/")[-1]
         return get_reviews(sku)
+
+    # --- Chat routes ---
+    if path == "/chat/start" and method == "POST":
+        return chat_start(body)
+    if path == "/chat/message" and method == "POST":
+        return chat_message(body)
+    if path == "/chat" and method == "GET":
+        return chat_list()
+    if re.match(r"^/chat/[\w\-]+$", path) and method == "GET":
+        session_id = path.split("/")[-1]
+        return chat_get(session_id)
 
     return response(404, {"error": "Not found"})
 
@@ -232,7 +244,6 @@ def get_customer(customer_id):
     try:
         table = dynamodb.Table(CONVERSATIONS_TABLE)
         conv_resp = table.query(
-            IndexName="customer-index",
             KeyConditionExpression=boto3.dynamodb.conditions.Key("customer_id").eq(customer_id),
             ScanIndexForward=False,
             Limit=10,
@@ -247,16 +258,16 @@ def get_customer(customer_id):
 # --- Conversations ---
 
 def get_conversations(qs):
-    """List recent conversations awaiting response."""
+    """List recent conversations awaiting response (submitted via chat widget)."""
     try:
         table = dynamodb.Table(CONVERSATIONS_TABLE)
-        # ponytail: scan with limit; upgrade path is GSI on status + created_at
-        resp = table.scan(
-            FilterExpression=boto3.dynamodb.conditions.Attr("status").eq("pending"),
+        # Chat submissions use customer_id=ANONYMOUS; query directly
+        resp = table.query(
+            KeyConditionExpression=boto3.dynamodb.conditions.Key("customer_id").eq("ANONYMOUS"),
+            ScanIndexForward=False,
             Limit=50,
         )
         items = resp.get("Items", [])
-        # Sort by created_at descending
         items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return response(200, items)
     except Exception as e:
@@ -323,6 +334,108 @@ def get_reviews(sku):
     rows = execute_sql(sql, params)
     reviews = [row_to_dict(r, ["review_id", "customer_id", "rating", "title", "body", "created_at"]) for r in rows]
     return response(200, reviews)
+
+
+# --- Chat ---
+
+def chat_start(body):
+    """Create a new live chat session."""
+    try:
+        data = json.loads(body) if isinstance(body, str) else (body or {})
+    except (json.JSONDecodeError, TypeError):
+        return response(400, {"error": "Invalid JSON body"})
+
+    email = data.get("email", "").strip()
+    if not email:
+        return response(400, {"error": "email is required"})
+
+    session_id = f"CHAT-{uuid.uuid4().hex[:8].upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    item = {
+        "session_id": session_id,
+        "email": email,
+        "status": "active",
+        "messages": [],
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    try:
+        table = dynamodb.Table(SESSIONS_TABLE)
+        table.put_item(Item=item)
+        return response(201, {"session_id": session_id})
+    except Exception as e:
+        return response(500, {"error": str(e)})
+
+
+def chat_message(body):
+    """Append a message to an existing chat session."""
+    try:
+        data = json.loads(body) if isinstance(body, str) else (body or {})
+    except (json.JSONDecodeError, TypeError):
+        return response(400, {"error": "Invalid JSON body"})
+
+    session_id = data.get("session_id", "").strip()
+    message = data.get("message", "").strip()
+    role = data.get("role", "").strip()
+
+    if not session_id or not message or role not in ("customer", "staff"):
+        return response(400, {"error": "session_id, message, and role (customer|staff) are required"})
+
+    now = datetime.now(timezone.utc).isoformat()
+    msg_obj = {"role": role, "text": message, "ts": now}
+
+    try:
+        table = dynamodb.Table(SESSIONS_TABLE)
+        table.update_item(
+            Key={"session_id": session_id},
+            UpdateExpression="SET messages = list_append(messages, :msg), updated_at = :now",
+            ExpressionAttributeValues={":msg": [msg_obj], ":now": now},
+        )
+        return response(200, {"status": "ok"})
+    except Exception as e:
+        return response(500, {"error": str(e)})
+
+
+def chat_get(session_id):
+    """Return full chat session with all messages."""
+    try:
+        table = dynamodb.Table(SESSIONS_TABLE)
+        resp = table.get_item(Key={"session_id": session_id})
+        item = resp.get("Item")
+        if not item:
+            return response(404, {"error": "Session not found"})
+        return response(200, item)
+    except Exception as e:
+        return response(500, {"error": str(e)})
+
+
+def chat_list():
+    """List all active chat sessions."""
+    try:
+        table = dynamodb.Table(SESSIONS_TABLE)
+        # ponytail: full scan is fine — table only holds live chat sessions
+        resp = table.scan(
+            FilterExpression=boto3.dynamodb.conditions.Attr("status").eq("active")
+        )
+        items = resp.get("Items", [])
+        # Return summary: email, last message preview, created_at
+        result = []
+        for item in items:
+            msgs = item.get("messages", [])
+            last_msg = msgs[-1]["text"][:80] if msgs else ""
+            result.append({
+                "session_id": item["session_id"],
+                "email": item.get("email", ""),
+                "last_message": last_msg,
+                "created_at": item.get("created_at", ""),
+                "updated_at": item.get("updated_at", ""),
+            })
+        result.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+        return response(200, result)
+    except Exception as e:
+        return response(500, {"error": str(e)})
 
 
 # --- Helpers ---

@@ -178,27 +178,105 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
 backBtn.addEventListener('click', showGrid);
 
 // --- Chat widget ---
-chatToggle.addEventListener('click', () => { chatPanel.hidden = !chatPanel.hidden; });
+chatToggle.addEventListener('click', () => {
+  chatPanel.hidden = !chatPanel.hidden;
+  if (!chatPanel.hidden) initChat();
+});
 chatClose.addEventListener('click', () => { chatPanel.hidden = true; });
 
-chatForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const text = chatInput.value.trim();
-  if (!text) return;
+let chatSessionId = localStorage.getItem('ridge_chat_session') || null;
+let chatPollTimer = null;
+let chatLastCount = 0;
 
-  appendMsg(text, 'user');
-  chatInput.value = '';
+async function initChat() {
+  if (chatSessionId) {
+    await loadChatSession();
+    startChatPoll();
+  } else {
+    showEmailPrompt();
+  }
+}
 
+function showEmailPrompt() {
+  chatMessages.innerHTML = '';
+  chatForm.innerHTML = `
+    <input type="email" id="chat-email" placeholder="Enter your email to start chatting" required>
+    <button type="submit">Start Chat</button>
+  `;
+  chatForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('chat-email').value.trim();
+    if (!email) return;
+    try {
+      const res = await fetch(`${API_BASE}/chat/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      chatSessionId = data.session_id;
+      localStorage.setItem('ridge_chat_session', chatSessionId);
+      showChatInput();
+      startChatPoll();
+    } catch { appendMsg('Unable to start chat. Please try again.', 'system'); }
+  };
+}
+
+function showChatInput() {
+  chatForm.innerHTML = `
+    <input type="text" id="chat-input" placeholder="Type a message…" autocomplete="off">
+    <button type="submit">Send</button>
+  `;
+  chatForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    appendMsg(text, 'user');
+    input.value = '';
+    try {
+      await fetch(`${API_BASE}/chat/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: chatSessionId, message: text, role: 'customer' })
+      });
+    } catch { /* best effort */ }
+  };
+}
+
+async function loadChatSession() {
   try {
-    await fetch(`${API_BASE}/conversations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, channel: 'web_chat' })
+    const res = await fetch(`${API_BASE}/chat/${chatSessionId}`);
+    if (!res.ok) { chatSessionId = null; localStorage.removeItem('ridge_chat_session'); showEmailPrompt(); return; }
+    const data = await res.json();
+    chatMessages.innerHTML = '';
+    (data.messages || []).forEach(m => {
+      appendMsg(m.text, m.role === 'customer' ? 'user' : 'system');
     });
-  } catch { /* best effort */ }
+    chatLastCount = (data.messages || []).length;
+    showChatInput();
+  } catch { showEmailPrompt(); }
+}
 
-  appendMsg('A member of our team will respond shortly.', 'system');
-});
+function startChatPoll() {
+  if (chatPollTimer) clearInterval(chatPollTimer);
+  chatPollTimer = setInterval(async () => {
+    if (!chatSessionId) return;
+    try {
+      const res = await fetch(`${API_BASE}/chat/${chatSessionId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const msgs = data.messages || [];
+      if (msgs.length > chatLastCount) {
+        // Render only new messages
+        msgs.slice(chatLastCount).forEach(m => {
+          appendMsg(m.text, m.role === 'customer' ? 'user' : 'system');
+        });
+        chatLastCount = msgs.length;
+      }
+    } catch { /* ignore poll errors */ }
+  }, 5000);
+}
 
 function appendMsg(text, type) {
   const div = document.createElement('div');
