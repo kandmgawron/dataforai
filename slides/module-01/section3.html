@@ -122,56 +122,108 @@ This isn't a bug. BM25 is doing exactly what it's designed to do: match tokens. 
     <div class="label">The solution</div>
     <h2>Text → numbers that capture meaning</h2>
     <div class="accent-line"></div>
-    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="width: 100%; max-width: 800px; height: auto; margin-top: 8px;">
-      <!-- Background -->
-      <rect x="0" y="0" width="800" height="340" rx="12" fill="#1a1d27" stroke="#2e3350"/>
-      <text x="400" y="24" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="600" fill="#4f8ef7" letter-spacing="0.1em">VECTOR SPACE</text>
+    <div class="two-col">
+      <svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+        <rect x="0" y="0" width="420" height="300" rx="12" fill="#1a1d27" stroke="#2e3350"/>
+        <text x="210" y="22" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="600" fill="#4f8ef7" letter-spacing="0.1em">VECTOR SPACE (1024 DIMENSIONS VISUALISED AS 2D)</text>
+        <!-- Red cluster -->
+        <circle cx="80" cy="140" r="6" fill="#e05c5c" opacity="0.9"/>
+        <text x="80" y="162" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">red</text>
+        <circle cx="110" cy="120" r="6" fill="#e05c5c" opacity="0.7"/>
+        <text x="110" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">crimson</text>
+        <circle cx="60" cy="115" r="6" fill="#e05c5c" opacity="0.7"/>
+        <text x="60" y="107" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">fiery_red</text>
+        <circle cx="95" cy="165" r="6" fill="#e05c5c" opacity="0.6"/>
+        <text x="95" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">scarlet</text>
+        <line x1="80" y1="140" x2="60" y2="115" stroke="#e05c5c" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>
+        <!-- Outdoor cluster -->
+        <circle cx="300" cy="150" r="6" fill="#3ecf8e" opacity="0.9"/>
+        <text x="300" y="170" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">hiking</text>
+        <circle cx="340" cy="130" r="6" fill="#3ecf8e" opacity="0.7"/>
+        <text x="340" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">Scotland</text>
+        <circle cx="360" cy="160" r="6" fill="#3ecf8e" opacity="0.7"/>
+        <text x="360" y="178" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">backpack</text>
+        <circle cx="315" cy="185" r="6" fill="#3ecf8e" opacity="0.5"/>
+        <text x="315" y="203" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">waterproof</text>
+        <!-- Blue cluster -->
+        <circle cx="200" cy="245" r="6" fill="#4f8ef7" opacity="0.7"/>
+        <text x="200" y="265" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">navy</text>
+        <circle cx="225" cy="230" r="6" fill="#4f8ef7" opacity="0.6"/>
+        <text x="225" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">cobalt</text>
+        <!-- Distance annotations -->
+        <line x1="80" y1="140" x2="200" y2="245" stroke="#8b90a8" stroke-width="1" stroke-dasharray="5,3" opacity="0.3"/>
+      </svg>
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-tag blue">How it works</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li>Each word/phrase becomes a <strong>list of 1024 numbers</strong></li>
+            <li>Similar meaning → <strong>nearby coordinates</strong></li>
+            <li>"red" and "fiery_red" are <strong>close neighbours</strong></li>
+            <li>"red" and "hiking" are <strong>far apart</strong></li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-tag green">What changes for search</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li>Query: "backpack for Scotland"</li>
+            <li>Finds: products tagged <strong>hiking, mountaineering, waterproof</strong></li>
+            <li>No exact token match needed</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="notes">Embeddings convert text into a list of numbers — a vector — that captures the meaning of the text. The key insight: things with similar meanings get similar numbers. So 'red', 'crimson', and 'fiery_red' all end up as nearby points in this space. 'Hiking', 'Scotland', 'backpack', and 'mountaineering' cluster together because they're semantically related.
 
-      <!-- Red cluster -->
-      <circle cx="140" cy="160" r="7" fill="#e05c5c" opacity="0.9"/>
-      <text x="140" y="185" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">red</text>
-      <circle cx="180" cy="140" r="7" fill="#e05c5c" opacity="0.7"/>
-      <text x="180" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">crimson</text>
-      <circle cx="115" cy="130" r="7" fill="#e05c5c" opacity="0.7"/>
-      <text x="115" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">fiery_red</text>
-      <circle cx="160" cy="190" r="7" fill="#e05c5c" opacity="0.6"/>
-      <text x="160" y="210" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">scarlet</text>
+When you search with embeddings, you're not matching tokens. You're asking 'find me the things closest in meaning to what I said'. That's why 'backpack for Scotland' can match a product tagged for hiking and mountaineering, even though it doesn't contain the word 'Scotland'.
 
-      <!-- Distance line: red to fiery_red (short) -->
-      <line x1="140" y1="160" x2="115" y2="130" stroke="#e05c5c" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
-      <text x="110" y="150" font-family="Inter, system-ui, sans-serif" font-size="9" fill="#e05c5c" opacity="0.8">short</text>
-
-      <!-- Outdoor cluster -->
-      <circle cx="560" cy="170" r="7" fill="#3ecf8e" opacity="0.9"/>
-      <text x="560" y="195" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">hiking</text>
-      <circle cx="610" cy="145" r="7" fill="#3ecf8e" opacity="0.7"/>
-      <text x="610" y="135" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">Scotland</text>
-      <circle cx="650" cy="180" r="7" fill="#3ecf8e" opacity="0.7"/>
-      <text x="650" y="205" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">backpack</text>
-      <circle cx="580" cy="210" r="7" fill="#3ecf8e" opacity="0.6"/>
-      <text x="580" y="235" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">waterproof</text>
-      <circle cx="620" cy="220" r="7" fill="#3ecf8e" opacity="0.5"/>
-      <text x="620" y="245" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">mountaineering</text>
-
-      <!-- Blue cluster -->
-      <circle cx="370" cy="280" r="7" fill="#4f8ef7" opacity="0.7"/>
-      <text x="370" y="303" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">navy</text>
-      <circle cx="410" cy="265" r="7" fill="#4f8ef7" opacity="0.6"/>
-      <text x="410" y="255" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">blue</text>
-      <circle cx="350" cy="260" r="7" fill="#4f8ef7" opacity="0.5"/>
-      <text x="350" y="250" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#e8eaf0">cobalt</text>
-
-      <!-- Distance line: red to blue (long) -->
-      <line x1="140" y1="160" x2="370" y2="280" stroke="#8b90a8" stroke-width="1" stroke-dasharray="6,4" opacity="0.4"/>
-      <text x="250" y="235" font-family="Inter, system-ui, sans-serif" font-size="9" fill="#8b90a8" opacity="0.8">long distance</text>
-    </svg>
-    <div class="callout">Similar meaning → nearby vectors. A search for "red" now finds "crimson" and "fiery_red" because they're neighbours in vector space.</div>
-    <div class="notes">Embeddings convert text into a list of numbers, a vector, that captures the meaning of the text. The key insight: things with similar meanings get similar numbers. So 'red', 'crimson', and 'fiery_red' all end up as nearby points in this space. 'Hiking', 'Scotland', 'backpack', and 'mountaineering' cluster together because they're semantically related.
-
-When you search with embeddings, you're not matching tokens. You're asking 'find me the things closest in meaning to what I said'. That's why 'backpack for Scotland' can match a product tagged for hiking and mountaineering, even though it doesn't contain the word 'Scotland'.</div>
+The numbers themselves are meaningless to humans — you can't look at [0.234, -0.891, 0.445, ...] and know what it means. But the distances between vectors are meaningful: closer = more semantically similar.</div>
   </div>
 
-  <!-- SLIDE 4: CHOOSING A MODEL -->
+  <!-- SLIDE 4: DIMENSIONS -->
+  <div class="slide" id="s-dimensions">
+    <div class="label">The trade-off</div>
+    <h2>Choosing dimensions</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-tag blue">What are dimensions?</div>
+          <p style="font-size: 0.95rem; line-height: 1.6;">Each dimension is one number in the vector. More dimensions = more nuance captured = better at distinguishing similar concepts.</p>
+          <p style="font-size: 0.95rem; line-height: 1.6; margin-top: 8px;"><code>"red jacket"</code> → <code>[0.234, -0.891, 0.445, ... × 1024]</code></p>
+        </div>
+        <div class="card">
+          <div class="card-tag purple">Titan Embed v2 options</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li><strong>256 dims</strong> — fast, small storage, lower quality</li>
+            <li><strong>512 dims</strong> — balanced for most use cases</li>
+            <li><strong>1024 dims</strong> — highest quality, more storage, slower search</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-tag green">Decision factors</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li><strong>Catalogue size</strong> — 22k products? 1024 is fine. 10M+ products? Consider 256</li>
+            <li><strong>Query precision</strong> — distinguishing "hiking boot" from "approach shoe" needs more dims</li>
+            <li><strong>Storage cost</strong> — 4× more dims = 4× more bytes per product</li>
+            <li><strong>Search latency</strong> — more dims = slightly slower nearest-neighbour search</li>
+          </ul>
+        </div>
+        <div class="callout" style="margin-top: 0;">For Meridian's 22k products, <strong>1024 dimensions</strong> is the right choice. Storage is ~88 MB total. Search latency is under 50ms.</div>
+      </div>
+    </div>
+    <div class="notes">Dimensions are the number of values in each vector. Think of it like resolution — more dimensions means more detail captured about the meaning of the text.
+
+At 256 dimensions, you can tell 'jacket' from 'tent' but might struggle to distinguish 'waterproof hardshell' from 'softshell'. At 1024 dimensions, those subtle differences are captured.
+
+The trade-off is storage and speed. Each product needs 1024 floating point numbers stored (4 bytes each = ~4KB per product). For Meridian's 22,000 products, that's about 88 MB total — trivial. For a retailer with 10 million products, that's 40 GB, and you might choose 256 dims to keep costs down.
+
+For this course, we'll use 1024 throughout. It's the highest quality Titan offers and our catalogue is small enough that storage and search speed aren't concerns. If you're building for a much larger catalogue, 512 is usually the sweet spot of quality vs cost.</div>
+  </div>
+
+  <!-- SLIDE 5: CHOOSING A MODEL -->
   <div class="slide" id="s-models">
     <div class="label">Decision framework</div>
     <h2>Embedding models on AWS</h2>
@@ -207,27 +259,42 @@ Open-source on SageMaker: for when you need full control. You can fine-tune on y
 For Meridian, we'll use Titan Embed v2. It's the right choice for a UK retailer with 22,000 products in English. We'd reach for Cohere if Meridian expanded to Continental Europe, or SageMaker if they had millions of products and wanted domain-specific tuning.</div>
   </div>
 
-  <!-- SLIDE 5: WHAT'S NEXT -->
+  <!-- SLIDE 6: WHAT'S NEXT -->
   <div class="slide" id="s-next">
     <div class="label">Coming up</div>
     <h2>Video 4: Choosing a Vector Store</h2>
     <div class="accent-line"></div>
-    <div class="card" style="max-width: 680px;">
-      <ul class="bullet-list" style="margin-top: 0;">
-        <li>You now know what embeddings are. But <strong>where do you put them?</strong></li>
-        <li><strong>OpenSearch Serverless</strong> vs <strong>pgvector</strong> vs <strong>S3 Vectors</strong></li>
-        <li>Decision framework for choosing based on your workload</li>
-      </ul>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">What you now know</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Text becomes <strong>vectors</strong> (lists of numbers)</li>
+          <li>Similar meaning = <strong>nearby vectors</strong></li>
+          <li><strong>Titan Embed v2</strong> at 1024 dims for Meridian</li>
+          <li>~£0.02 per million tokens to generate</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag green">What's next</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Where do you <strong>store</strong> 22k vectors?</li>
+          <li><strong>OpenSearch Serverless</strong> vs <strong>pgvector</strong> vs <strong>S3 Vectors</strong></li>
+          <li>When to use <strong>Bedrock Knowledge Bases</strong></li>
+          <li>Decision framework based on <strong>your workload</strong></li>
+        </ul>
+      </div>
     </div>
-    <div class="callout" style="max-width: 680px;">We already have OpenSearch deployed in your stack. Next video, we'll start using it.</div>
-    <div class="notes">You now understand what embeddings are and which model to use. But a vector is just a list of numbers, you need somewhere to store them and search them efficiently. That's a vector store. Next video covers the options: OpenSearch Serverless (which is already in your stack), pgvector on Aurora, S3 Vectors, and managed options like Bedrock Knowledge Bases. We'll talk about when to use which.</div>
+    <div class="callout">OpenSearch is already deployed in your stack. Next video: we generate embeddings for Meridian's products and store them.</div>
+    <div class="notes">You now understand what embeddings are and which model to use. But a vector is just a list of numbers — you need somewhere to store them and search them efficiently. That's a vector store. Next video covers the options: OpenSearch Serverless (which is already in your stack), pgvector on Aurora, S3 Vectors, and managed options like Bedrock Knowledge Bases. We'll talk about when to use which.
+
+The key decision factors are: catalogue size, query patterns (pure vector vs hybrid), cost, and operational complexity. We'll map each option against Meridian's specific requirements.</div>
   </div>
 
 </div><!-- /deck -->
 
 <!-- PROGRESS + COUNTER -->
 <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
-<div class="counter" id="counter">1 / 5</div>
+<div class="counter" id="counter">1 / 6</div>
 
 <!-- NOTES open in separate window via N key -->
 <script>

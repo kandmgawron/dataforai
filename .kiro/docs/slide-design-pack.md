@@ -196,10 +196,10 @@ Stat block padding: 24px. stat-num: 2.2rem. stat-label: 0.85rem with 8px top mar
 
 - Arrow keys (left/right) or click to navigate
 - Space = next
-- S toggles speaker notes panel
+- N opens speaker notes in a separate popup window (for second screen)
 - Progress bar at bottom (gradient fill)
 - Slide counter bottom-right (mono font)
-- Nav hint bottom-left
+- No on-screen navigation hints (clean presentation view)
 
 ---
 
@@ -230,6 +230,12 @@ Module NN · Section N: Section Name
 
 ## File Template
 
-Each new module starts by copying the CSS and JS from module-01, then replacing only the slide content between `<div class="deck">` and `</div><!-- /deck -->`.
+Each new module's slides MUST be built from `slides/template.html`. This file contains the exact CSS, navigation JS, BroadcastChannel presenter notes, and N-key popup window code. To create a new slide deck:
 
-The full CSS block and JS navigation code are identical across all modules.
+1. Copy `slides/template.html` to `slides/module-NN/sectionN.html`
+2. Replace `{{MODULE_TITLE}}` in the `<title>` tag
+3. Update the counter `1 / N` to match your slide count
+4. Insert slides between the `<!-- === INSERT SLIDES HERE === -->` comment and `</div><!-- /deck -->`
+5. First slide gets `class="slide active"`, all others get `class="slide"`
+
+DO NOT modify the CSS, navigation code, or presenter notes implementation. They must be identical across all decks.
