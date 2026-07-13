@@ -76,17 +76,9 @@ The same frontends gain capabilities as each module is completed:
 
 ### Video 1: Meet Meridian — DONE (recorded)
 
-### Video 2: Environment Setup
-- [ ] Build setup video slide deck (HTML, dark theme)
-- [ ] Write speaker notes for setup video
-- [ ] Build 01-setup-check.ipynb (verification notebook: Bedrock, Aurora, OpenSearch, DynamoDB, S3 connectivity checks)
-- [ ] Record Video 2
+### Video 2: Environment Setup — DONE (recorded)
 
-### Video 3: Embeddings on AWS (Module 2)
-- [ ] Build slide deck for embeddings module
-- [ ] Write speaker notes
-- [ ] Build notebook: 02-embeddings.ipynb (Titan Embed v2 calls, Cohere comparison, dimension exploration, cost calculation)
-- [ ] Record Video 3
+### Video 3: Embeddings on AWS (Module 2) — DONE (recorded)
 
 ### Video 4: Choosing a Vector Store on AWS (Module 3)
 - [ ] Build slide deck (decision framework: OpenSearch Serverless vs pgvector vs S3 Vectors vs Bedrock KB vs Kendra)
@@ -312,8 +304,8 @@ The same frontends gain capabilities as each module is completed:
 
 | Asset type | Total needed | Done | Remaining |
 |-----------|-------------|------|-----------|
-| Videos | 31 + wrap-up | 1 | 31 |
-| Slide decks | 31 | 2 | 29 |
+| Videos | 31 + wrap-up | 3 | 29 |
+| Slide decks | 31 | 3 | 28 |
 | Notebooks | 22 | 0 | 22 |
 | CloudFormation stacks | 5 | 2 | 3 |
 | Frontends | 2 (Ridge Assist + Ridge Insight) | 0 | 2 |
