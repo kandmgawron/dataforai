@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1 Video 3: Embeddings on AWS — From RAG Prototype to Production</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8b90a8;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; padding: 56px 72px; flex-direction: column; justify-content: center; }
+  .slide.active { display: flex; }
+  .progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s ease; }
+  .counter { position: fixed; bottom: 16px; right: 24px; font-size: 12px; color: var(--text-muted); z-index: 100; font-family: var(--mono); }
+  h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
+  .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: stretch; }
+  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; font-size: 1.05rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
+  .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
+  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; font-family: var(--mono); font-size: 0.95rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
+  .cmd-block .comment { color: var(--text-muted); }
+  .cmd-block .prompt { color: var(--text-muted); user-select: none; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center; }
+  .stat-block .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
+  .stat-block .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+  .bullet-list { list-style: none; margin-top: 16px; }
+  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; font-size: 1.05rem; line-height: 1.6; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before { content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .bullet-list li strong { color: var(--text); }
+  .notes { display: none !important; }
+  
+  /* Three column grid */
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; align-items: start; }
+  .card-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .card-tag.blue { color: var(--accent); }
+  .card-tag.green { color: var(--green); }
+  .card-tag.purple { color: var(--accent2); }
+
+  #s-title { background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,0.08) 0%, transparent 60%), var(--bg); }
+
+  /* Presenter mode */
+  body.presenter-mode .deck { width: 50%; }
+  body.presenter-mode .slide { transform: scale(0.5); transform-origin: top left; }
+  #speaker-notes-panel { position:fixed; top:0; right:-50%; width:50%; height:100vh; background:#0d0f18; color:var(--text); z-index:2000; transition:right 0.3s ease; border-left:2px solid var(--accent); display:flex; flex-direction:column; font-family:var(--sans); overflow:hidden; }
+  body.presenter-mode #speaker-notes-panel { right:0; }
+  #speaker-notes-header { background:#0a0c14; padding:16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  #speaker-notes-header .title { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); }
+  #speaker-notes-header .timer-area { display:flex; gap:20px; align-items:center; font-family:var(--mono); }
+  #speaker-notes-header #timer { font-size:1.3rem; color:var(--accent); cursor:pointer; }
+  #speaker-notes-header #clock { font-size:0.9rem; color:var(--text-muted); }
+  #speaker-notes-content { padding:24px; flex:1; overflow-y:auto; font-size:0.9rem; line-height:1.7; color:var(--text-muted); white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide active" id="s-title">
+    <div style="font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px;">Module 01 · Video 3</div>
+    <h1>Embeddings on AWS</h1>
+    <h1 style="color: var(--text-muted); font-weight: 400;">Why meaning matters more<br>than matching.</h1>
+    <div class="accent-line"></div>
+    <div style="margin-top: 24px; font-size: 1.05rem; color: var(--text-muted);">From RAG Prototype to Production: AI Data Architecture on AWS</div>
+    <div class="notes">In Video 2 you saw search fail. You searched for 'backpack for a week in Scotland' and got nothing. You tried the colour filter with 'red' and missed products tagged 'fiery_red'. This video explains why that happens and introduces the technology that fixes it: embeddings.</div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide" id="s-problem">
+    <div class="label">Why search fails</div>
+    <h2>Tokens don't understand meaning</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">Failed searches from Video 2</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li><strong>"backpack for Scotland"</strong> → 1000s results, none really correct</li>
+          <li>Colour filter <strong>"red"</strong> → misses <code>fiery_red</code></li>
+          <li><strong>"waterproof winter gloves"</strong> → misses products described differently</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag purple">How BM25 / keyword search works</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Tokenises text into individual terms</li>
+          <li>Matches <strong>exact tokens</strong> only</li>
+          <li>No understanding of synonyms or intent</li>
+          <li>Ranks by term frequency, not meaning</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">Every failed search in Video 2 happened because keyword matching can't bridge the gap between what customers say and how products are described.</div>
+    <div class="notes">BM25 is the algorithm behind keyword search. It's been the standard for decades. It works by breaking text into tokens and matching them. If your query contains 'red' and the product data says 'fiery_red', there's no match. If you search 'backpack for Scotland', it looks for those exact words in product names and descriptions. If the product says 'multi-day hiking rucksack suitable for Scottish Highlands', BM25 doesn't know those are related.
+
+This isn't a bug. BM25 is doing exactly what it's designed to do: match tokens. The problem is that customers don't think in tokens. They think in meaning.</div>
+  </div>
+
+  <!-- SLIDE 3: WHAT EMBEDDINGS DO -->
+  <div class="slide" id="s-embeddings">
+    <div class="label">The solution</div>
+    <h2>Text → numbers that capture meaning</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+        <rect x="0" y="0" width="420" height="300" rx="12" fill="#1a1d27" stroke="#2e3350"/>
+        <text x="210" y="22" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="600" fill="#4f8ef7" letter-spacing="0.1em">VECTOR SPACE (1024 DIMENSIONS VISUALISED AS 2D)</text>
+        <!-- Red cluster -->
+        <circle cx="80" cy="140" r="6" fill="#e05c5c" opacity="0.9"/>
+        <text x="80" y="162" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">red</text>
+        <circle cx="110" cy="120" r="6" fill="#e05c5c" opacity="0.7"/>
+        <text x="110" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">crimson</text>
+        <circle cx="60" cy="115" r="6" fill="#e05c5c" opacity="0.7"/>
+        <text x="60" y="107" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">fiery_red</text>
+        <circle cx="95" cy="165" r="6" fill="#e05c5c" opacity="0.6"/>
+        <text x="95" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">scarlet</text>
+        <line x1="80" y1="140" x2="60" y2="115" stroke="#e05c5c" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>
+        <!-- Outdoor cluster -->
+        <circle cx="300" cy="150" r="6" fill="#3ecf8e" opacity="0.9"/>
+        <text x="300" y="170" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">hiking</text>
+        <circle cx="340" cy="130" r="6" fill="#3ecf8e" opacity="0.7"/>
+        <text x="340" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">Scotland</text>
+        <circle cx="360" cy="160" r="6" fill="#3ecf8e" opacity="0.7"/>
+        <text x="360" y="178" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">backpack</text>
+        <circle cx="315" cy="185" r="6" fill="#3ecf8e" opacity="0.5"/>
+        <text x="315" y="203" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">waterproof</text>
+        <!-- Blue cluster -->
+        <circle cx="200" cy="245" r="6" fill="#4f8ef7" opacity="0.7"/>
+        <text x="200" y="265" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">navy</text>
+        <circle cx="225" cy="230" r="6" fill="#4f8ef7" opacity="0.6"/>
+        <text x="225" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#e8eaf0">cobalt</text>
+        <!-- Distance annotations -->
+        <line x1="80" y1="140" x2="200" y2="245" stroke="#8b90a8" stroke-width="1" stroke-dasharray="5,3" opacity="0.3"/>
+      </svg>
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-tag blue">How it works</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li>Each word/phrase becomes a <strong>list of 1024 numbers</strong></li>
+            <li>Similar meaning → <strong>nearby coordinates</strong></li>
+            <li>"red" and "fiery_red" are <strong>close neighbours</strong></li>
+            <li>"red" and "hiking" are <strong>far apart</strong></li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-tag green">What changes for search</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li>Query: "backpack for Scotland"</li>
+            <li>Finds: products tagged <strong>hiking, mountaineering, waterproof</strong></li>
+            <li>No exact token match needed</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="notes">Embeddings convert text into a list of numbers — a vector — that captures the meaning of the text. The key insight: things with similar meanings get similar numbers. So 'red', 'crimson', and 'fiery_red' all end up as nearby points in this space. 'Hiking', 'Scotland', 'backpack', and 'mountaineering' cluster together because they're semantically related.
+
+When you search with embeddings, you're not matching tokens. You're asking 'find me the things closest in meaning to what I said'. That's why 'backpack for Scotland' can match a product tagged for hiking and mountaineering, even though it doesn't contain the word 'Scotland'.
+
+The numbers themselves are meaningless to humans — you can't look at [0.234, -0.891, 0.445, ...] and know what it means. But the distances between vectors are meaningful: closer = more semantically similar.</div>
+  </div>
+
+  <!-- SLIDE 4: DIMENSIONS -->
+  <div class="slide" id="s-dimensions">
+    <div class="label">The trade-off</div>
+    <h2>Choosing dimensions</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-tag blue">What are dimensions?</div>
+          <p style="font-size: 0.95rem; line-height: 1.6;">Each dimension is one number in the vector. More dimensions = more nuance captured = better at distinguishing similar concepts.</p>
+          <p style="font-size: 0.95rem; line-height: 1.6; margin-top: 8px;"><code>"red jacket"</code> → <code>[0.234, -0.891, 0.445, ... × 1024]</code></p>
+        </div>
+        <div class="card">
+          <div class="card-tag purple">Dimension options</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li><strong>256 dims</strong> — fast, small storage, lower quality</li>
+            <li><strong>512 dims</strong> — balanced for most use cases</li>
+            <li><strong>1024 dims</strong> — highest quality, more storage, slower search</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-tag green">Decision factors</div>
+          <ul class="bullet-list" style="margin-top: 0;">
+            <li><strong>Catalogue size</strong> — 22k products? 1024 is fine. 10M+ products? Consider 256</li>
+            <li><strong>Query precision</strong> — distinguishing "hiking boot" from "approach shoe" needs more dims</li>
+            <li><strong>Storage cost</strong> — 4× more dims = 4× more bytes per product</li>
+            <li><strong>Search latency</strong> — more dims = slightly slower nearest-neighbour search</li>
+          </ul>
+        </div>
+        <div class="callout" style="margin-top: 0;">For Meridian's 22k products, <strong>1024 dimensions</strong> is the right choice. Storage is ~88 MB total. Search latency is under 50ms.</div>
+      </div>
+    </div>
+    <div class="notes">Dimensions are the number of values in each vector. Think of it like resolution — more dimensions means more detail captured about the meaning of the text.
+
+At 256 dimensions, you can tell 'jacket' from 'tent' but might struggle to distinguish 'waterproof hardshell' from 'softshell'. At 1024 dimensions, those subtle differences are captured.
+
+The trade-off is storage and speed. Each product needs 1024 floating point numbers stored (4 bytes each = ~4KB per product). For Meridian's 22,000 products, that's about 88 MB total — trivial. For a retailer with 10 million products, that's 40 GB, and you might choose 256 dims to keep costs down.
+
+For this course, we'll use 1024 throughout. It's the highest quality Titan offers and our catalogue is small enough that storage and search speed aren't concerns. If you're building for a much larger catalogue, 512 is usually the sweet spot of quality vs cost.</div>
+  </div>
+
+  <!-- SLIDE 5: CHOOSING A MODEL -->
+  <div class="slide" id="s-models">
+    <div class="label">Decision framework</div>
+    <h2>Embedding models on AWS</h2>
+    <div class="accent-line"></div>
+    <div class="three-col">
+      <div class="card">
+        <div class="card-tag blue">Amazon Titan Embed v2</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Default choice. 256/512/1024 dimensions. Cheapest via Bedrock. Good general quality. UK English ✓.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag green">Third-party via Bedrock</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Cohere Embed, others. Multilingual strength. Domain-specific options. Higher cost.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag purple">Open-source on SageMaker</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Full control. Fine-tuning possible. Cost-effective at massive scale. Operational overhead.</p>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-block"><div class="stat-num">1024</div><div class="stat-label">Dimensions (Titan v2 max)</div></div>
+      <div class="stat-block"><div class="stat-num">~£0.02</div><div class="stat-label">Per million tokens</div></div>
+      <div class="stat-block"><div class="stat-num">&lt;100ms</div><div class="stat-label">Latency per call</div></div>
+      <div class="stat-block"><div class="stat-num">25 langs</div><div class="stat-label">Titan v2 coverage</div></div>
+    </div>
+    <div class="notes">Three options on AWS for generating embeddings.
+
+Titan Embed v2 is the default choice for most workloads. It's Amazon's own model, available through Bedrock, and it's the cheapest option. 1024 dimensions gives you good quality without excessive storage. It supports 25 languages and handles English extremely well.
+
+Third-party models through Bedrock: Cohere Embed is the main alternative. It's stronger for multilingual workloads. There are also domain-specific options emerging. Higher cost than Titan.
+
+Open-source on SageMaker: for when you need full control. You can fine-tune on your own data, which can significantly improve quality for specialised domains. Cost-effective at massive scale because you're paying for compute, not per-token. But you take on the operational overhead of hosting.
+
+For Meridian, we'll use Titan Embed v2. It's the right choice for a UK retailer with 22,000 products in English. We'd reach for Cohere if Meridian expanded to Continental Europe, or SageMaker if they had millions of products and wanted domain-specific tuning.</div>
+  </div>
+
+  <!-- SLIDE 6: WHAT'S NEXT -->
+  <div class="slide" id="s-next">
+    <div class="label">Coming up</div>
+    <h2>Video 4: Choosing a Vector Store</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">What you now know</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Text becomes <strong>vectors</strong> (lists of numbers)</li>
+          <li>Similar meaning = <strong>nearby vectors</strong></li>
+          <li><strong>Titan Embed v2</strong> at 1024 dims for Meridian</li>
+          <li>~£0.02 per million tokens to generate</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag green">What's next</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Where do you <strong>store</strong> 22k vectors?</li>
+          <li><strong>OpenSearch Serverless</strong> vs <strong>pgvector</strong> vs <strong>S3 Vectors</strong></li>
+          <li>When to use <strong>Bedrock Knowledge Bases</strong></li>
+          <li>Decision framework based on <strong>your workload</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">OpenSearch is already deployed in your stack. Next video: we generate embeddings for Meridian's products and store them.</div>
+    <div class="notes">You now understand what embeddings are and which model to use. But a vector is just a list of numbers — you need somewhere to store them and search them efficiently. That's a vector store. Next video covers the options: OpenSearch Serverless (which is already in your stack), pgvector on Aurora, S3 Vectors, and managed options like Bedrock Knowledge Bases. We'll talk about when to use which.
+
+The key decision factors are: catalogue size, query patterns (pure vector vs hybrid), cost, and operational complexity. We'll map each option against Meridian's specific requirements.</div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- PROGRESS + COUNTER -->
+<div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="counter" id="counter">1 / 6</div>
+
+<!-- NOTES open in separate window via N key -->
+<script>
+const channel = new BroadcastChannel('meridian-slides');
+const deck = {
+  slides: Array.from(document.querySelectorAll('.slide')),
+  cur: 0,
+  notesWin: null,
+  go(n) {
+    if (n < 0 || n >= this.slides.length) return;
+    this.slides[this.cur].classList.remove('active');
+    this.cur = n;
+    this.slides[this.cur].classList.add('active');
+    document.getElementById('counter').textContent = (this.cur + 1) + ' / ' + this.slides.length;
+    document.getElementById('progress-fill').style.width = ((this.cur + 1) / this.slides.length * 100) + '%';
+    channel.postMessage({type: 'NAVIGATE', slide: this.cur, total: this.slides.length});
+    this.sendNotesData();
+  },
+  next() { this.go(this.cur + 1); },
+  prev() { this.go(this.cur - 1); },
+  sendNotesData() {
+    const notes = this.slides[this.cur].querySelector('.notes');
+    const curClone = this.slides[this.cur].cloneNode(true);
+    const n = curClone.querySelector('.notes'); if (n) n.remove();
+    const nextHtml = this.cur + 1 < this.slides.length ? (() => { const c = this.slides[this.cur+1].cloneNode(true); const nn = c.querySelector('.notes'); if(nn) nn.remove(); return c.innerHTML; })() : null;
+    const styles = document.querySelector('style').textContent;
+    channel.postMessage({
+      type: 'NOTES_DATA',
+      slide: this.cur,
+      total: this.slides.length,
+      notesText: notes ? notes.textContent.trim() : '',
+      currentHtml: curClone.innerHTML,
+      nextHtml: nextHtml,
+      styles: styles
+    });
+  },
+  openNotes() {
+    const notesHtml = `<!DOCTYPE html><html><head><title>Speaker Notes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;}
+.timer{font-family:'JetBrains Mono',monospace;font-size:1.4rem;color:#4f8ef7;}
+.slide-num{font-size:0.85rem;color:#8b90a8;}
+.notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;padding:0.75rem;border:1px solid #2e3350;border-radius:6px;overflow:auto;resize:both;height:250px;}
+.slides-row{display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-top:0.75rem;flex:1;min-height:0;}
+.slide-frame{background:#000;border:1px solid #2e3350;border-radius:6px;overflow:hidden;position:relative;min-height:0;}
+.slide-frame.current{border-color:#4f8ef7;border-width:2px;}
+.slide-frame h3{position:absolute;top:4px;left:8px;font-size:0.6rem;color:#8b90a8;text-transform:uppercase;letter-spacing:0.08em;z-index:1;}
+.slide-frame iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:none;pointer-events:none;transform-origin:0 0;}
+.nav-btns{display:flex;gap:0.5rem;margin-top:0.75rem;}
+.nav-btns button{flex:1;padding:0.6rem;background:#1a1d27;border:1px solid #2e3350;border-radius:6px;color:#e8eaf0;cursor:pointer;font-size:0.9rem;font-weight:600;}
+.nav-btns button:hover{background:#22263a;border-color:#4f8ef7;}
+</style></head><body>
+<div class="top"><span class="slide-num" id="nn-slide">1 / ?</span><span class="timer" id="nn-timer">00:00</span></div>
+<div class="notes-content" id="nn-notes">Press N on the presentation to connect.</div>
+<div class="slides-row">
+<div class="slide-frame current"><h3>Current</h3><iframe id="nn-current"></iframe></div>
+<div class="slide-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
+</div>
+<div class="nav-btns"><button id="nn-prev">\u2190 Previous</button><button id="nn-next-btn">Next \u2192</button></div>
+<script>
+var ch = new BroadcastChannel('meridian-slides');
+var startTime = Date.now();
+setInterval(function(){
+  var s = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('nn-timer').textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+},1000);
+ch.onmessage = function(e){
+  var d = e.data;
+  if(d.type==='NOTES_DATA'){
+    document.getElementById('nn-slide').textContent=(d.slide+1)+' / '+d.total;
+    document.getElementById('nn-notes').textContent=d.notesText;
+    var curF=document.getElementById('nn-current');
+    var nxtF=document.getElementById('nn-next');
+    curF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.currentHtml+'</div></body></html>';
+    if(d.nextHtml){nxtF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.nextHtml+'</div></body></html>';}
+    else{nxtF.srcdoc='<html><body style="background:#0f1117;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><p style="color:#8b90a8;font-family:sans-serif;">End</p></body></html>';}
+  }
+};
+document.getElementById('nn-prev').addEventListener('click',function(){ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();});
+document.getElementById('nn-next-btn').addEventListener('click',function(){ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();});
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();}
+  if(e.key==='ArrowLeft'){e.preventDefault();ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();}
+});
+function scaleFrames(){
+  document.querySelectorAll('.slide-frame').forEach(function(f){
+    var iframe=f.querySelector('iframe');if(!iframe)return;
+    var scale=Math.min(f.clientWidth/1920,f.clientHeight/1080);
+    iframe.style.transform='scale('+scale+')';
+  });
+}
+new ResizeObserver(scaleFrames).observe(document.body);
+scaleFrames();
+<\/script></body></html>`;
+    this.notesWin = window.open('', 'speaker-notes', 'width=1000,height=700');
+    this.notesWin.document.write(notesHtml);
+    this.notesWin.document.close();
+    this.sendNotesData();
+  }
+};
+// Listen for commands from notes window
+channel.onmessage = function(e) {
+  if (e.data.type === 'NEXT') deck.next();
+  if (e.data.type === 'PREV') deck.prev();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+  if (e.key === 'n' || e.key === 'N') { deck.openNotes(); }
+});
+document.querySelector('.deck').addEventListener('click', () => deck.next());
+deck.go(0);
+</script>
+</body>
+</html>
