@@ -29,24 +29,21 @@ All labs follow Meridian Outdoor Co., a fictional UK outdoor retailer re-archite
 - AWS account with Bedrock model access enabled (Claude, Titan Embeddings, Cohere Embed)
 - Python 3.11+
 - AWS CLI configured
-- Recommended region: eu-west-2 (London)
+- Recommended region: eu-west-1 (Ireland)
 
 ---
 
 ## Deploying the Lab Environment
 
 ```bash
-# Deploy base stack (VPC, Aurora, ElastiCache, DynamoDB, S3, IAM)
+# Deploy base stack (VPC, Aurora, OpenSearch, DynamoDB, S3, Valkey, IAM)
 make deploy-base
 
-# Add vector stores (OpenSearch Serverless + pgvector)
-make deploy-vectors
+# Deploy web layer (Ridge Assist, Ridge Insight, API Gateway, Lambda)
+make deploy-web
 
-# Add knowledge stores (Neptune, Bedrock Knowledge Base, Bedrock Agent)
-make deploy-knowledge
-
-# Add operations layer (Timestream, Step Functions, CloudWatch dashboards)
-make deploy-ops
+# Load data
+make seed-data
 
 # Tear everything down (important: avoids unexpected AWS charges)
 make destroy-all

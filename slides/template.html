@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{MODULE_TITLE}} — From RAG Prototype to Production</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8b90a8;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; padding: 56px 72px; flex-direction: column; justify-content: center; }
+  .slide.active { display: flex; }
+  .progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s ease; }
+  .counter { position: fixed; bottom: 16px; right: 24px; font-size: 12px; color: var(--text-muted); z-index: 100; font-family: var(--mono); }
+  h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
+  .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; font-size: 1.05rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
+  .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
+  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; font-family: var(--mono); font-size: 0.95rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
+  .cmd-block .comment { color: var(--text-muted); }
+  .cmd-block .prompt { color: var(--text-muted); user-select: none; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center; }
+  .stat-block .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
+  .stat-block .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+  .bullet-list { list-style: none; margin-top: 16px; }
+  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; font-size: 1.05rem; line-height: 1.6; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before { content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .bullet-list li strong { color: var(--text); }
+  .notes { display: none !important; }
+  #s-title { background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,0.08) 0%, transparent 60%), var(--bg); }
+
+  /* Presenter mode */
+  body.presenter-mode .deck { width: 50%; }
+  body.presenter-mode .slide { transform: scale(0.5); transform-origin: top left; }
+  #speaker-notes-panel { position:fixed; top:0; right:-50%; width:50%; height:100vh; background:#0d0f18; color:var(--text); z-index:2000; transition:right 0.3s ease; border-left:2px solid var(--accent); display:flex; flex-direction:column; font-family:var(--sans); overflow:hidden; }
+  body.presenter-mode #speaker-notes-panel { right:0; }
+  #speaker-notes-header { background:#0a0c14; padding:16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  #speaker-notes-header .title { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); }
+  #speaker-notes-header .timer-area { display:flex; gap:20px; align-items:center; font-family:var(--mono); }
+  #speaker-notes-header #timer { font-size:1.3rem; color:var(--accent); cursor:pointer; }
+  #speaker-notes-header #clock { font-size:0.9rem; color:var(--text-muted); }
+  #speaker-notes-content { padding:24px; flex:1; overflow-y:auto; font-size:0.9rem; line-height:1.7; color:var(--text-muted); white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- === INSERT SLIDES HERE === -->
+  <!-- Each slide follows this pattern:
+  <div class="slide active" id="s-title">  (first slide gets 'active' class)
+    <div class="label">Section label</div>
+    <h2>Slide Title</h2>
+    <div class="accent-line"></div>
+    ... content using .card, .two-col, .three-col, .callout, .bullet-list, .stat-grid etc ...
+    <div class="notes">Speaker notes text here (hidden, shown in presenter window)</div>
+  </div>
+  -->
+
+</div><!-- /deck -->
+
+
+<!-- PROGRESS + COUNTER -->
+<div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="counter" id="counter">1 / N</div>
+
+<!-- NOTES open in separate window via N key -->
+<script>
+const channel = new BroadcastChannel('meridian-slides');
+const deck = {
+  slides: Array.from(document.querySelectorAll('.slide')),
+  cur: 0,
+  notesWin: null,
+  go(n) {
+    if (n < 0 || n >= this.slides.length) return;
+    this.slides[this.cur].classList.remove('active');
+    this.cur = n;
+    this.slides[this.cur].classList.add('active');
+    document.getElementById('counter').textContent = (this.cur + 1) + ' / ' + this.slides.length;
+    document.getElementById('progress-fill').style.width = ((this.cur + 1) / this.slides.length * 100) + '%';
+    channel.postMessage({type: 'NAVIGATE', slide: this.cur, total: this.slides.length});
+    this.sendNotesData();
+  },
+  next() { this.go(this.cur + 1); },
+  prev() { this.go(this.cur - 1); },
+  sendNotesData() {
+    const notes = this.slides[this.cur].querySelector('.notes');
+    const curClone = this.slides[this.cur].cloneNode(true);
+    const n = curClone.querySelector('.notes'); if (n) n.remove();
+    const nextHtml = this.cur + 1 < this.slides.length ? (() => { const c = this.slides[this.cur+1].cloneNode(true); const nn = c.querySelector('.notes'); if(nn) nn.remove(); return c.innerHTML; })() : null;
+    const styles = document.querySelector('style').textContent;
+    channel.postMessage({
+      type: 'NOTES_DATA',
+      slide: this.cur,
+      total: this.slides.length,
+      notesText: notes ? notes.textContent.trim() : '',
+      currentHtml: curClone.innerHTML,
+      nextHtml: nextHtml,
+      styles: styles
+    });
+  },
+  openNotes() {
+    const notesHtml = `<!DOCTYPE html><html><head><title>Speaker Notes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;}
+.timer{font-family:'JetBrains Mono',monospace;font-size:1.4rem;color:#4f8ef7;}
+.slide-num{font-size:0.85rem;color:#8b90a8;}
+.notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;padding:0.75rem;border:1px solid #2e3350;border-radius:6px;overflow:auto;resize:both;height:250px;}
+.slides-row{display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-top:0.75rem;flex:1;min-height:0;}
+.slide-frame{background:#000;border:1px solid #2e3350;border-radius:6px;overflow:hidden;position:relative;min-height:0;}
+.slide-frame.current{border-color:#4f8ef7;border-width:2px;}
+.slide-frame h3{position:absolute;top:4px;left:8px;font-size:0.6rem;color:#8b90a8;text-transform:uppercase;letter-spacing:0.08em;z-index:1;}
+.slide-frame iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:none;pointer-events:none;transform-origin:0 0;}
+.nav-btns{display:flex;gap:0.5rem;margin-top:0.75rem;}
+.nav-btns button{flex:1;padding:0.6rem;background:#1a1d27;border:1px solid #2e3350;border-radius:6px;color:#e8eaf0;cursor:pointer;font-size:0.9rem;font-weight:600;}
+.nav-btns button:hover{background:#22263a;border-color:#4f8ef7;}
+</style></head><body>
+<div class="top"><span class="slide-num" id="nn-slide">1 / ?</span><span class="timer" id="nn-timer">00:00</span></div>
+<div class="notes-content" id="nn-notes">Press N on the presentation to connect.</div>
+<div class="slides-row">
+<div class="slide-frame current"><h3>Current</h3><iframe id="nn-current"></iframe></div>
+<div class="slide-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
+</div>
+<div class="nav-btns"><button id="nn-prev">\u2190 Previous</button><button id="nn-next-btn">Next \u2192</button></div>
+<script>
+var ch = new BroadcastChannel('meridian-slides');
+var startTime = Date.now();
+setInterval(function(){
+  var s = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('nn-timer').textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+},1000);
+ch.onmessage = function(e){
+  var d = e.data;
+  if(d.type==='NOTES_DATA'){
+    document.getElementById('nn-slide').textContent=(d.slide+1)+' / '+d.total;
+    document.getElementById('nn-notes').textContent=d.notesText;
+    var curF=document.getElementById('nn-current');
+    var nxtF=document.getElementById('nn-next');
+    curF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.currentHtml+'</div></body></html>';
+    if(d.nextHtml){nxtF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.nextHtml+'</div></body></html>';}
+    else{nxtF.srcdoc='<html><body style="background:#0f1117;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><p style="color:#8b90a8;font-family:sans-serif;">End</p></body></html>';}
+  }
+};
+document.getElementById('nn-prev').addEventListener('click',function(){ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();});
+document.getElementById('nn-next-btn').addEventListener('click',function(){ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();});
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();}
+  if(e.key==='ArrowLeft'){e.preventDefault();ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();}
+});
+function scaleFrames(){
+  document.querySelectorAll('.slide-frame').forEach(function(f){
+    var iframe=f.querySelector('iframe');if(!iframe)return;
+    var scale=Math.min(f.clientWidth/1920,f.clientHeight/1080);
+    iframe.style.transform='scale('+scale+')';
+  });
+}
+new ResizeObserver(scaleFrames).observe(document.body);
+scaleFrames();
+<\/script></body></html>`;
+    this.notesWin = window.open('', 'speaker-notes', 'width=1000,height=700');
+    this.notesWin.document.write(notesHtml);
+    this.notesWin.document.close();
+    this.sendNotesData();
+  }
+};
+// Listen for commands from notes window
+channel.onmessage = function(e) {
+  if (e.data.type === 'NEXT') deck.next();
+  if (e.data.type === 'PREV') deck.prev();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+  if (e.key === 'n' || e.key === 'N') { deck.openNotes(); }
+});
+document.querySelector('.deck').addEventListener('click', () => deck.next());
+deck.go(0);
+</script>
+</body>
+</html>
