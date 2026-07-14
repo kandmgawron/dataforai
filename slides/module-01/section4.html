@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1 Video 4: Choosing a Vector Store — From RAG Prototype to Production</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05c5c;
+    --text: #e8eaf0;
+    --text-muted: #8b90a8;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); height: 100vh; overflow: hidden; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; padding: 56px 72px; flex-direction: column; justify-content: center; }
+  .slide.active { display: flex; }
+  .progress { position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s ease; }
+  .counter { position: fixed; bottom: 16px; right: 24px; font-size: 12px; color: var(--text-muted); z-index: 100; font-family: var(--mono); }
+  h1 { font-size: 2.8rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  p { font-size: 1.05rem; line-height: 1.7; color: var(--text-muted); }
+  .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .accent-line { width: 48px; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; margin: 16px 0 24px; }
+  code { font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: stretch; }
+  .callout { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; font-size: 1.05rem; color: var(--text); line-height: 1.6; margin-top: 20px; }
+  .callout-warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.25); border-left-color: var(--orange); }
+  .cmd-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; font-family: var(--mono); font-size: 0.95rem; line-height: 1.8; color: var(--green); margin-top: 16px; overflow-x: auto; }
+  .cmd-block .comment { color: var(--text-muted); }
+  .cmd-block .prompt { color: var(--text-muted); user-select: none; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; text-align: center; }
+  .stat-block .stat-num { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: var(--mono); line-height: 1; }
+  .stat-block .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+  .bullet-list { list-style: none; margin-top: 16px; }
+  .bullet-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; font-size: 1.05rem; line-height: 1.6; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .bullet-list li:last-child { border-bottom: none; }
+  .bullet-list li::before { content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .bullet-list li strong { color: var(--text); }
+  .notes { display: none !important; }
+
+  /* Three and four column grids */
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; align-items: stretch; }
+  .four-col { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; align-items: stretch; }
+  .card-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .card-tag.blue { color: var(--accent); }
+  .card-tag.green { color: var(--green); }
+  .card-tag.purple { color: var(--accent2); }
+  .card-tag.orange { color: var(--orange); }
+  .compare-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.9rem; }
+  .compare-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .compare-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table .highlight { color: var(--green); font-weight: 600; }
+
+  #s-title { background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,0.08) 0%, transparent 60%), var(--bg); }
+
+  /* Presenter mode */
+  body.presenter-mode .deck { width: 50%; }
+  body.presenter-mode .slide { transform: scale(0.5); transform-origin: top left; }
+  #speaker-notes-panel { position:fixed; top:0; right:-50%; width:50%; height:100vh; background:#0d0f18; color:var(--text); z-index:2000; transition:right 0.3s ease; border-left:2px solid var(--accent); display:flex; flex-direction:column; font-family:var(--sans); overflow:hidden; }
+  body.presenter-mode #speaker-notes-panel { right:0; }
+  #speaker-notes-header { background:#0a0c14; padding:16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  #speaker-notes-header .title { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); }
+  #speaker-notes-header .timer-area { display:flex; gap:20px; align-items:center; font-family:var(--mono); }
+  #speaker-notes-header #timer { font-size:1.3rem; color:var(--accent); cursor:pointer; }
+  #speaker-notes-header #clock { font-size:0.9rem; color:var(--text-muted); }
+  #speaker-notes-content { padding:24px; flex:1; overflow-y:auto; font-size:0.9rem; line-height:1.7; color:var(--text-muted); white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide active" id="s-title">
+    <div style="font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px;">Module 01 · Video 4</div>
+    <h1>Choosing a Vector Store</h1>
+    <h1 style="color: var(--text-muted); font-weight: 400;">Where do 22,000 product vectors live?</h1>
+    <div class="accent-line"></div>
+    <div style="margin-top: 24px; font-size: 1.05rem; color: var(--text-muted);">From RAG Prototype to Production: AI Data Architecture on AWS</div>
+    <div class="notes">You know what embeddings are. You know we're using Titan Embed v2 at 1024 dimensions. The question now: where do you store them so you can search by meaning? AWS gives you several options. This video covers what they are, when to use each, and why Meridian uses two of them.</div>
+  </div>
+
+  <!-- SLIDE 2: OPTIONS -->
+  <div class="slide" id="s-options">
+    <div class="label">The landscape</div>
+    <h2>Vector stores on AWS</h2>
+    <div class="accent-line"></div>
+    <div class="four-col">
+      <div class="card">
+        <div class="card-tag blue">OpenSearch Serverless</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Managed vector + keyword search. Hybrid queries built-in. Scale-to-zero (NextGen). No servers to manage.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag green">Aurora pgvector</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Extension on your existing PostgreSQL. Zero new services. Transactional consistency. Already deployed.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag purple">S3 Vectors</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Store vectors in S3. Pay per query. No infrastructure. Good for infrequent batch queries.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag orange">Bedrock Knowledge Bases</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Fully managed RAG pipeline. Ingests documents, generates embeddings, stores and searches. Least control.</p>
+      </div>
+    </div>
+    <div class="notes">Four options. Each has a sweet spot.
+
+OpenSearch Serverless is purpose-built for search. It does BM25 keyword AND vector search in a single query. The NextGen collection type scales to zero when idle, so you're not paying when nobody's searching. For Meridian, this is the primary search engine.
+
+pgvector is an extension you add to PostgreSQL. Aurora already has it enabled. You're adding a column of vectors to your existing products table. No new service, no new network hop. The trade-off: it doesn't do hybrid search natively, and at very large scale (millions of vectors) it's slower than a dedicated vector database.
+
+S3 Vectors is new. You store vectors as objects in S3 and query them with a similarity API. Pay per query, no infrastructure. Good for batch analytics or infrequent searches. Not suitable for real-time search at the latencies Meridian needs.
+
+Bedrock Knowledge Bases is the most managed option. You point it at a document bucket, it handles chunking, embedding, storage, and retrieval. Least control but fastest to set up. Good for policy documents where you don't need custom chunking strategies.</div>
+  </div>
+
+  <!-- SLIDE 3: FRAMEWORK -->
+  <div class="slide" id="s-framework">
+    <div class="label">Decision framework</div>
+    <h2>When to use what</h2>
+    <div class="accent-line"></div>
+    <div class="card">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Factor</th>
+            <th>OpenSearch</th>
+            <th>pgvector</th>
+            <th>S3 Vectors</th>
+            <th>Bedrock KB</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Real-time search</td><td class="highlight">Yes</td><td>Yes</td><td>No</td><td>Yes</td></tr>
+          <tr><td>Hybrid (BM25 + vector)</td><td class="highlight">Built-in</td><td>Manual</td><td>No</td><td>No</td></tr>
+          <tr><td>Scale to zero</td><td class="highlight">NextGen</td><td>Aurora pause</td><td class="highlight">Always</td><td>Yes</td></tr>
+          <tr><td>Existing PostgreSQL</td><td>No</td><td class="highlight">Yes</td><td>No</td><td>No</td></tr>
+          <tr><td>Operational overhead</td><td>Low</td><td class="highlight">Lowest</td><td class="highlight">None</td><td class="highlight">None</td></tr>
+          <tr><td>Fine-grained control</td><td>High</td><td>High</td><td>Low</td><td class="highlight">Lowest</td></tr>
+          <tr><td>Max practical scale</td><td>Billions</td><td>~5M</td><td>Billions</td><td>~10M</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="notes">This table is the decision framework. Walk through each row.
+
+Real-time search: if you need sub-100ms responses for user-facing search, S3 Vectors is out. The rest all work.
+
+Hybrid search: only OpenSearch does it natively in a single query. With pgvector you'd need to run two queries and combine scores yourself. That's doable but adds complexity.
+
+Scale to zero: OpenSearch NextGen and Aurora auto-pause both do this. Important for a course lab where you tear down nightly.
+
+Existing PostgreSQL: if you already have Aurora (Meridian does), pgvector adds vector search with zero new services. No new billing, no new IAM policies, no new VPC configuration.
+
+Operational overhead: Bedrock KB and S3 Vectors are both zero-ops. OpenSearch is low (managed service). pgvector is lowest because it's just your existing database.
+
+Scale: pgvector works well up to about 5 million vectors on Aurora. Beyond that, you hit memory and index rebuild time issues. OpenSearch and S3 Vectors handle billions.</div>
+  </div>
+
+  <!-- SLIDE 4: COST -->
+  <div class="slide" id="s-cost">
+    <div class="label">Cost at scale</div>
+    <h2>What does storage cost?</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">Monthly cost comparison</div>
+        <table class="compare-table">
+          <thead>
+            <tr><th>Scale</th><th>OpenSearch</th><th>pgvector</th><th>S3 Vectors</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>22k vectors</td><td>~£0*</td><td class="highlight">£0 (included)</td><td>~£0.01</td></tr>
+            <tr><td>500k vectors</td><td>~£15-25</td><td>~£2-5</td><td>~£0.50</td></tr>
+            <tr><td>10M vectors</td><td>~£200-400</td><td>~£50-100</td><td>~£10</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.8rem; margin-top: 12px; color: var(--text-muted);">* NextGen scale-to-zero: no charge when idle</p>
+      </div>
+      <div class="card">
+        <div class="card-tag green">What drives cost</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li><strong>Storage</strong> — bytes per vector × number of vectors</li>
+          <li><strong>Compute</strong> — OCUs (OpenSearch) vs ACUs (Aurora) vs per-query (S3)</li>
+          <li><strong>Queries</strong> — OpenSearch charges per OCU-hour, pgvector uses existing capacity</li>
+          <li><strong>Ingestion</strong> — one-time Bedrock cost to generate embeddings (~£0.45 for 22k products)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="notes">Cost is where the decision gets real.
+
+At Meridian's scale of 22,000 products, everything is essentially free. pgvector adds a column to an existing table — zero marginal cost. OpenSearch NextGen scales to zero. S3 Vectors is pennies.
+
+The differences emerge at scale. At 500k vectors (if Meridian grows or you index reviews too), OpenSearch costs £15-25/month for the OCU hours during active search. pgvector is still cheap because it's sharing Aurora capacity you're already paying for. S3 Vectors remains the cheapest but can't do real-time search.
+
+At 10M vectors, the economics shift significantly. pgvector needs a larger Aurora instance for the indexes to fit in memory. OpenSearch is purpose-built for this scale. S3 Vectors is dirt cheap but query-time-limited.
+
+The one-time cost to generate all 22k embeddings with Titan Embed v2: about £0.45.</div>
+  </div>
+
+  <!-- SLIDE 5: MERIDIAN -->
+  <div class="slide" id="s-meridian">
+    <div class="label">Meridian's architecture</div>
+    <h2>Why we use both</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">OpenSearch Serverless</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li><strong>Primary search engine</strong> for Ridge Assist</li>
+          <li><strong>BM25 + vector</strong> hybrid queries</li>
+          <li>Handles product <strong>discovery, browsing, filtering</strong></li>
+          <li><strong>Scale-to-zero</strong> between sessions</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag green">Aurora pgvector</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Product detail <strong>source of truth</strong></li>
+          <li>Embedding stored <strong>alongside structured data</strong></li>
+          <li>Used for: <strong>'find similar products'</strong> on detail page</li>
+          <li><strong>Zero new services</strong>, zero new cost</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">Using both isn't over-engineering. They serve different access patterns. OpenSearch finds products. Aurora knows everything about them.</div>
+    <div class="notes">Meridian uses both. This isn't redundancy, it's different access patterns.
+
+OpenSearch is the search engine. When a customer types 'warm jacket for Scottish winter', OpenSearch handles that query. It combines BM25 keyword matching with vector similarity in a single request. It's optimised for discovery: fast, ranked, filterable.
+
+Aurora pgvector stores the embedding alongside the product record. When you're on a product detail page and want 'similar products', that's a pgvector query — find the 5 nearest vectors to this product's vector. It's a simple, cheap query against your existing database.
+
+The intentional drift we built into the demo (250 products only in one store, 250 only in the other) shows why having both matters and why consistency between them is a real engineering problem. That's what zero-ETL solves later in the course.</div>
+  </div>
+
+  <!-- SLIDE 6: NEXT -->
+  <div class="slide" id="s-next">
+    <div class="label">Live demo</div>
+    <h2>Let's see it work</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">What we'll do in the notebook</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Generate embeddings for <strong>20 products</strong> with Titan Embed v2</li>
+          <li>Store them in <strong>Aurora pgvector</strong></li>
+          <li>Store the same vectors in <strong>OpenSearch</strong></li>
+          <li>Run the <strong>same query</strong> against both</li>
+          <li>Compare results <strong>side-by-side</strong></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag green">What to watch for</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>Same vectors, <strong>different results</strong> (scoring differs)</li>
+          <li>pgvector: <strong>cosine similarity</strong>, pure vector</li>
+          <li>OpenSearch: <strong>hybrid BM25 + vector</strong>, combined score</li>
+          <li><strong>Query latency</strong> comparison</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">Switching to the notebook now. Follow along in 03-vector-store-comparison.ipynb.</div>
+    <div class="notes">Time to switch to the notebook. We'll generate embeddings for a small sample of products, store them in both vector stores, and run the same natural language query against each. The point isn't which one is 'better' — it's seeing how the same vectors produce different results depending on the search algorithm. OpenSearch's hybrid scoring finds products that match both keywords AND meaning. pgvector's pure cosine similarity finds the semantically closest matches regardless of exact term overlap. Both are useful. Different tools for different jobs.</div>
+  </div>
+
+</div><!-- /deck -->
+
+
+<!-- PROGRESS + COUNTER -->
+<div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+<div class="counter" id="counter">1 / 6</div>
+
+<!-- NOTES open in separate window via N key -->
+<script>
+const channel = new BroadcastChannel('meridian-slides');
+const deck = {
+  slides: Array.from(document.querySelectorAll('.slide')),
+  cur: 0,
+  notesWin: null,
+  go(n) {
+    if (n < 0 || n >= this.slides.length) return;
+    this.slides[this.cur].classList.remove('active');
+    this.cur = n;
+    this.slides[this.cur].classList.add('active');
+    document.getElementById('counter').textContent = (this.cur + 1) + ' / ' + this.slides.length;
+    document.getElementById('progress-fill').style.width = ((this.cur + 1) / this.slides.length * 100) + '%';
+    channel.postMessage({type: 'NAVIGATE', slide: this.cur, total: this.slides.length});
+    this.sendNotesData();
+  },
+  next() { this.go(this.cur + 1); },
+  prev() { this.go(this.cur - 1); },
+  sendNotesData() {
+    const notes = this.slides[this.cur].querySelector('.notes');
+    const curClone = this.slides[this.cur].cloneNode(true);
+    const n = curClone.querySelector('.notes'); if (n) n.remove();
+    const nextHtml = this.cur + 1 < this.slides.length ? (() => { const c = this.slides[this.cur+1].cloneNode(true); const nn = c.querySelector('.notes'); if(nn) nn.remove(); return c.innerHTML; })() : null;
+    const styles = document.querySelector('style').textContent;
+    channel.postMessage({
+      type: 'NOTES_DATA',
+      slide: this.cur,
+      total: this.slides.length,
+      notesText: notes ? notes.textContent.trim() : '',
+      currentHtml: curClone.innerHTML,
+      nextHtml: nextHtml,
+      styles: styles
+    });
+  },
+  openNotes() {
+    const notesHtml = `<!DOCTYPE html><html><head><title>Speaker Notes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0f1117;color:#e8eaf0;padding:1.5rem;margin:0;height:100vh;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;}
+.timer{font-family:'JetBrains Mono',monospace;font-size:1.4rem;color:#4f8ef7;}
+.slide-num{font-size:0.85rem;color:#8b90a8;}
+.notes-content{line-height:1.7;font-size:0.9rem;white-space:pre-wrap;color:#c8cad0;padding:0.75rem;border:1px solid #2e3350;border-radius:6px;overflow:auto;resize:both;height:250px;}
+.slides-row{display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-top:0.75rem;flex:1;min-height:0;}
+.slide-frame{background:#000;border:1px solid #2e3350;border-radius:6px;overflow:hidden;position:relative;min-height:0;}
+.slide-frame.current{border-color:#4f8ef7;border-width:2px;}
+.slide-frame h3{position:absolute;top:4px;left:8px;font-size:0.6rem;color:#8b90a8;text-transform:uppercase;letter-spacing:0.08em;z-index:1;}
+.slide-frame iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:none;pointer-events:none;transform-origin:0 0;}
+.nav-btns{display:flex;gap:0.5rem;margin-top:0.75rem;}
+.nav-btns button{flex:1;padding:0.6rem;background:#1a1d27;border:1px solid #2e3350;border-radius:6px;color:#e8eaf0;cursor:pointer;font-size:0.9rem;font-weight:600;}
+.nav-btns button:hover{background:#22263a;border-color:#4f8ef7;}
+</style></head><body>
+<div class="top"><span class="slide-num" id="nn-slide">1 / ?</span><span class="timer" id="nn-timer">00:00</span></div>
+<div class="notes-content" id="nn-notes">Press N on the presentation to connect.</div>
+<div class="slides-row">
+<div class="slide-frame current"><h3>Current</h3><iframe id="nn-current"></iframe></div>
+<div class="slide-frame"><h3>Next</h3><iframe id="nn-next"></iframe></div>
+</div>
+<div class="nav-btns"><button id="nn-prev">\u2190 Previous</button><button id="nn-next-btn">Next \u2192</button></div>
+<scr"+"ipt>
+var ch = new BroadcastChannel('meridian-slides');
+var startTime = Date.now();
+setInterval(function(){
+  var s = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('nn-timer').textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+},1000);
+ch.onmessage = function(e){
+  var d = e.data;
+  if(d.type==='NOTES_DATA'){
+    document.getElementById('nn-slide').textContent=(d.slide+1)+' / '+d.total;
+    document.getElementById('nn-notes').textContent=d.notesText;
+    var curF=document.getElementById('nn-current');
+    var nxtF=document.getElementById('nn-next');
+    curF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.currentHtml+'</div></body></html>';
+    if(d.nextHtml){nxtF.srcdoc='<!DOCTYPE html><html><head><style>'+d.styles+'</style></head><body style="background:#0f1117;margin:0;overflow:hidden;"><div style="position:absolute;inset:0;display:flex;padding:56px 72px;flex-direction:column;justify-content:center;">'+d.nextHtml+'</div></body></html>';}
+    else{nxtF.srcdoc='<html><body style="background:#0f1117;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><p style="color:#8b90a8;font-family:sans-serif;">End</p></body></html>';}
+  }
+};
+document.getElementById('nn-prev').addEventListener('click',function(){ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();});
+document.getElementById('nn-next-btn').addEventListener('click',function(){ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();});
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();ch.postMessage({type:'NEXT'});if(window.opener&&window.opener.deck)window.opener.deck.next();}
+  if(e.key==='ArrowLeft'){e.preventDefault();ch.postMessage({type:'PREV'});if(window.opener&&window.opener.deck)window.opener.deck.prev();}
+});
+function scaleFrames(){
+  document.querySelectorAll('.slide-frame').forEach(function(f){
+    var iframe=f.querySelector('iframe');if(!iframe)return;
+    var scale=Math.min(f.clientWidth/1920,f.clientHeight/1080);
+    iframe.style.transform='scale('+scale+')';
+  });
+}
+new ResizeObserver(scaleFrames).observe(document.body);
+scaleFrames();
+<\/scr"+"ipt></body></html>`;
+    this.notesWin = window.open('', 'speaker-notes', 'width=1000,height=700');
+    this.notesWin.document.write(notesHtml);
+    this.notesWin.document.close();
+    this.sendNotesData();
+  }
+};
+// Listen for commands from notes window
+channel.onmessage = function(e) {
+  if (e.data.type === 'NEXT') deck.next();
+  if (e.data.type === 'PREV') deck.prev();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); deck.next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); deck.prev(); }
+  if (e.key === 'n' || e.key === 'N') { deck.openNotes(); }
+});
+document.querySelector('.deck').addEventListener('click', () => deck.next());
+deck.go(0);
+</script>
+</body>
+</html>
