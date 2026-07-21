@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EposNow Bedrock &amp; AgentCore Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #000433;
+    --accent-pink: #FC3165;
+    --text-white: #FFFFFF;
+    --text-gray: rgba(255, 255, 255, 0.7);
+    --line-pink: rgba(252, 49, 101, 0.5);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-normal: 0.6s;
+  }
+  body, html { margin:0; padding:0; background:#000; overflow:hidden; width:100vw; height:100vh; }
+  .slide {
+    width:1920px; height:1080px; background-color:var(--bg-dark);
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%) scale(var(--scale-factor,1));
+    overflow:hidden; font-family:'Montserrat',sans-serif; color:var(--text-white);
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    opacity:0; visibility:hidden; transition:opacity 0.5s ease, visibility 0.5s ease;
+  }
+  .slide.active { opacity:1; visibility:visible; z-index:10; }
+  .progress-bar { position:fixed; top:0; left:0; height:4px; background:var(--accent-pink); transition:width 0.3s ease; z-index:1000; }
+  .nav-dots { position:fixed; right:20px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:10px; z-index:1000; }
+  .nav-dot { width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,0.3); cursor:pointer; transition:background 0.3s ease, transform 0.3s ease; }
+  .nav-dot.active { background:var(--accent-pink); transform:scale(1.3); }
+  .slide-title-bg { background-image:url('assets/bg-title.png'); }
+  .slide-content-bg { background-image:url('assets/bg-content.png'); }
+  .logo-top-left { position:absolute; top:106px; left:153px; width:190px; }
+  .footer { position:absolute; bottom:50px; right:50px; display:flex; align-items:center; gap:15px; }
+  .footer span { font-size:20px; color:var(--text-gray); font-weight:400; }
+  .footer img { height:35px; }
+  h1 { font-family:'Montserrat',sans-serif; font-size:72px; font-weight:700; margin:0; position:absolute; top:96px; left:80px; }
+  .title-slide-text { position:absolute; bottom:150px; left:153px; font-size:80px; font-weight:700; width:1600px; line-height:1.2; }
+  .title-subtitle { position:absolute; bottom:90px; left:153px; font-size:32px; font-weight:400; color:var(--text-gray); }
+  .content-area { position:absolute; top:190px; left:80px; right:80px; font-size:28px; line-height:1.4; font-weight:400; }
+  .subtitle { font-size:32px; font-weight:600; margin-bottom:10px; }
+  .intro-text { margin-bottom:20px; color:var(--text-gray); }
+  ul { margin:0; padding-left:40px; list-style-type:disc; font-size:40px; line-height:1.6; }
+  li { margin-bottom:15px; }
+  ul ul { margin-top:15px; list-style-type:circle; font-size:36px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:25px; }
+  .two-col-box { background:rgba(255,255,255,0.05); padding:25px; border-radius:10px; }
+  .two-col-box h3 { font-size:28px; margin:0 0 12px 0; color:var(--accent-pink); }
+  .two-col-box ul { font-size:24px; padding-left:25px; }
+  .two-col-box li { margin-bottom:10px; font-size:24px; }
+  .two-col-box .example { font-size:20px; color:var(--text-gray); background:rgba(0,0,0,0.3); padding:12px 16px; border-radius:8px; margin-top:12px; border-left:3px solid var(--accent-pink); }
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+  .col-box { background:rgba(255,255,255,0.05); padding:25px; border-radius:10px; border-top:4px solid var(--accent-pink); }
+  .col-box h3 { font-size:26px; margin:0 0 12px 0; color:var(--accent-pink); }
+  .col-box p, .col-box li { font-size:22px; line-height:1.5; }
+  .col-box ul { font-size:22px; padding-left:25px; }
+  .col-box li { margin-bottom:8px; }
+  .callout { background:rgba(252,49,101,0.1); border:2px solid var(--accent-pink); border-radius:12px; padding:25px 30px; font-size:28px; font-weight:500; margin-top:20px; }
+  .callout-icon { font-size:32px; margin-right:10px; }
+  .reveal { opacity:0; transform:translateY(30px); transition:opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo); }
+  .slide.active .reveal { opacity:1; transform:translateY(0); }
+  .reveal:nth-child(1){transition-delay:0.1s} .reveal:nth-child(2){transition-delay:0.2s} .reveal:nth-child(3){transition-delay:0.3s}
+  .reveal:nth-child(4){transition-delay:0.4s} .reveal:nth-child(5){transition-delay:0.5s} .reveal:nth-child(6){transition-delay:0.6s}
+  .reveal:nth-child(7){transition-delay:0.7s} .reveal:nth-child(8){transition-delay:0.8s}
+  .click-reveal { opacity:0; transform:translateY(20px); transition:opacity 0.4s var(--ease-out-expo), transform 0.4s var(--ease-out-expo); cursor:pointer; }
+  .click-reveal.visible { opacity:1; transform:translateY(0); }
+  .click-hint { font-size:18px; color:var(--text-gray); font-style:italic; margin-top:15px; opacity:0.6; }
+  .step-number { display:inline-block; width:40px; height:40px; line-height:40px; text-align:center; border-radius:50%; background:var(--accent-pink); color:#fff; font-weight:700; font-size:20px; margin-right:12px; flex-shrink:0; }
+  .step-row { display:flex; align-items:flex-start; margin-bottom:20px; }
+  .step-content { flex:1; }
+  .step-content h4 { font-size:26px; margin:0 0 6px 0; font-weight:600; }
+  .step-content p { font-size:22px; margin:0; color:var(--text-gray); line-height:1.4; }
+  .step-content a { color:var(--accent-pink); text-decoration:none; font-weight:500; }
+  .closing-list { list-style:none; padding:0; }
+  .closing-list li { font-size:30px; margin-bottom:20px; padding-left:30px; position:relative; }
+  .closing-list li::before { content:'→'; position:absolute; left:0; color:var(--accent-pink); font-weight:700; }
+
+  @media print {
+    @page { size:1920px 1080px; margin:0; }
+    body, html { overflow:visible!important; height:auto!important; }
+    .slide { position:relative!important; transform:none!important; opacity:1!important; visibility:visible!important; page-break-after:always; break-after:page; top:auto!important; left:auto!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .nav-dots,.progress-bar,#speaker-notes-panel { display:none!important; }
+    .reveal { opacity:1!important; transform:none!important; }
+    .click-reveal { opacity:1!important; transform:none!important; }
+  }
+
+  body.presenter-mode .slide { left:8.5%!important; transform:translate(-50%,-50%) scale(calc(var(--scale-factor)*0.15))!important; }
+  #speaker-notes-panel { position:fixed; top:0; right:-100%; width:83.33%; min-width:800px; height:100vh; background:#111; color:#fff; z-index:2000; transition:right 0.3s ease; border-left:2px solid var(--accent-pink); display:flex; flex-direction:column; font-family:'Quicksand',sans-serif; }
+  body.presenter-mode #speaker-notes-panel { right:0; }
+  #speaker-notes-header { background:#000; padding:20px; border-bottom:1px solid #333; font-weight:bold; font-size:24px; display:flex; justify-content:space-between; align-items:center; }
+  .font-controls { display:flex; gap:10px; margin-right:30px; }
+  .font-btn { background:#333; color:#fff; border:1px solid #555; border-radius:4px; width:36px; height:36px; font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .font-btn:hover { background:var(--accent-pink); border-color:var(--accent-pink); }
+  .time-container { display:flex; gap:30px; align-items:center; }
+  .time-block { display:flex; flex-direction:column; align-items:flex-end; }
+  .time-label { font-size:14px; color:var(--text-gray); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+  #clock, #timer { color:var(--accent-pink); font-family:monospace; font-size:32px; }
+  #speaker-notes-content { padding:40px; flex-grow:1; overflow-y:auto; font-size:32px; line-height:1.6; color:#ddd; }
+  #speaker-notes-content p { margin-top:0; margin-bottom:25px; }
+  #speaker-notes-content ul { font-size:32px; padding-left:30px; margin-bottom:25px; }
+  #speaker-notes-content li { margin-bottom:15px; }
+  .notes { display:none!important; }
+</style>
+</head>
+<body>
+
+<!-- Speaker Notes Panel -->
+<div id="speaker-notes-panel">
+  <div id="speaker-notes-header">
+    <div style="display:flex;align-items:center;">
+      <span style="margin-right:30px;">Speaker Notes</span>
+      <div class="font-controls">
+        <button class="font-btn" id="font-decrease" title="Decrease Font Size">-</button>
+        <button class="font-btn" id="font-increase" title="Increase Font Size">+</button>
+      </div>
+    </div>
+    <div class="time-container">
+      <div class="time-block"><span class="time-label">Timer</span><span id="timer">00:00:00</span></div>
+      <div class="time-block"><span class="time-label">Clock</span><span id="clock">00:00</span></div>
+    </div>
+  </div>
+  <div id="speaker-notes-content">Press 'S' to toggle this panel.</div>
+</div>
+<!-- ==================== SLIDE 1: TITLE ==================== -->
+<div class="slide slide-title-bg" id="slide1">
+  <img src="assets/logo-large.png" alt="DoiT" class="logo-top-left reveal">
+  <div class="title-slide-text reveal">EposNow Bedrock &amp;<br>AgentCore Workshop</div>
+  <div class="title-subtitle reveal">30-minute intro · Sandbox labs to follow</div>
+  <div class="notes">
+    <p>Welcome, everyone. Thanks for carving out time for this.</p>
+    <p>Quick logistics: this first 30 minutes is context-setting. No labs yet. After this, you'll break into sandbox environments and get hands-on with Bedrock and AgentCore directly.</p>
+    <p>There are roughly 17 of you here today. If you have questions during the intro, raise them as we go. If they're lab-specific, hold them for the breakout.</p>
+    <p>My goal is simple: give you enough context to know what these tools actually do, what they don't do, and why they're worth your time this afternoon.</p>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 2: WHY THIS MATTERS ==================== -->
+<div class="slide slide-content-bg" id="slide2">
+  <h1 class="reveal">Why This Matters</h1>
+  <div class="content-area">
+    <div class="subtitle reveal">Grounded in EposNow's actual priorities</div>
+    <ul class="reveal">
+      <li>Database performance under growth — query latency, connection pooling, scaling reads</li>
+      <li class="click-reveal">Cost pressure — doing more without linear spend increases</li>
+      <li class="click-reveal">Team enablement — your engineers building confidently, not blocked by tooling gaps</li>
+    </ul>
+    <div class="callout click-reveal">
+      <span class="callout-icon">⚡</span>
+      Bedrock and AgentCore are opportunities on the table, but they're tools, not magic. Your primary wins are still in database stability and cost control.
+    </div>
+    <p class="click-hint reveal">Click to reveal points</p>
+  </div>
+  <div class="footer reveal">
+    <span>Confidential</span>
+    <img src="assets/logo-small.png" alt="DoiT">
+  </div>
+  <div class="notes">
+    <p>Start here because it's easy to lead with shiny AI features. That's not what this session is about.</p>
+    <p>EposNow's immediate pain points are well understood:</p>
+    <ul>
+      <li>Your databases are under pressure from transaction growth. You're seeing latency creep, and connection management is getting harder as you scale horizontally.</li>
+      <li>Cost discipline matters. You're an enterprise that needs to grow capability without proportional cost increases. Every new tool has to justify its compute spend.</li>
+      <li>Team velocity. You have good engineers, but they need to move fast with confidence. That means clear tooling, good documentation, and patterns they can repeat.</li>
+    </ul>
+    <p>The callout is intentional: Bedrock and AgentCore are genuinely useful, but they sit on top of a stable foundation. If your data layer is shaky, AI features won't save you. They'll amplify the problem.</p>
+    <p>So today's framing: these are tools that can accelerate specific workflows. Let's see what they actually do.</p>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 3: BEDROCK VS AGENTCORE ==================== -->
+<div class="slide slide-content-bg" id="slide3">
+  <h1 class="reveal">Bedrock vs AgentCore</h1>
+  <div class="content-area">
+    <div class="two-col reveal">
+      <div class="two-col-box">
+        <h3>Amazon Bedrock</h3>
+        <ul>
+          <li>Model access — Claude, Llama, Titan, Cohere</li>
+          <li>RAG (Retrieval-Augmented Generation)</li>
+          <li>Prompt engineering and guardrails</li>
+          <li>Single-turn inference, knowledge bases</li>
+        </ul>
+        <div class="example click-reveal">
+          <strong>Example:</strong> A customer asks "what's your returns policy for sale items?" — Bedrock retrieves the right policy doc and generates a precise answer. One question, one answer, done.
+        </div>
+      </div>
+      <div class="two-col-box">
+        <h3>Amazon AgentCore</h3>
+        <ul>
+          <li>Multi-step orchestration</li>
+          <li>Tool use and system integration</li>
+          <li>Workflow chaining and decision logic</li>
+          <li>Agent identity, memory, session management</li>
+        </ul>
+        <div class="example click-reveal">
+          <strong>Example:</strong> An agent checks order status, finds a delivery exception, looks up the refund policy, drafts a resolution email, and queues it for approval. Five steps, no human in the loop until sign-off.
+        </div>
+      </div>
+    </div>
+    <div class="callout click-reveal">
+      <span class="callout-icon">🔑</span>
+      Bedrock is the brain. AgentCore is the hands. You need both for anything beyond simple Q&amp;A.
+    </div>
+    <p class="click-hint reveal">Click to reveal examples</p>
+  </div>
+  <div class="footer reveal">
+    <span>Confidential</span>
+    <img src="assets/logo-small.png" alt="DoiT">
+  </div>
+  <div class="notes">
+    <p>This is the core distinction, and it's worth getting right before the labs.</p>
+    <p><strong>Bedrock</strong> is where the models live. It's a managed service that gives you access to foundation models — Claude from Anthropic, Meta's Llama, Amazon's own Titan, Cohere for embeddings. You use it for:</p>
+    <ul>
+      <li>Generating text responses from prompts</li>
+      <li>RAG: attaching a knowledge base (your docs, your data) so the model answers from your content, not its training data</li>
+      <li>Guardrails: content filtering, topic blocking, PII redaction</li>
+    </ul>
+    <p>The key mental model: Bedrock handles single-turn interactions. You ask, it answers. It can be sophisticated (RAG, multi-doc retrieval), but it's fundamentally request-response.</p>
+    <p><strong>AgentCore</strong> is the orchestration layer. It takes Bedrock's inference capability and chains it into multi-step workflows. An agent can:</p>
+    <ul>
+      <li>Call APIs (your internal systems, third-party services)</li>
+      <li>Make decisions based on intermediate results</li>
+      <li>Maintain session state across multiple turns</li>
+      <li>Hand off between sub-agents for different domains</li>
+    </ul>
+    <p>The example on the right is deliberate — that five-step workflow is exactly the kind of thing EposNow could build for CS ticket resolution or order management. But it depends on Bedrock underneath for the actual language understanding.</p>
+    <p>In the labs this afternoon, you'll work with both. Bedrock labs first (model access, RAG setup), then AgentCore labs (building an agent that uses tools).</p>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 4: GETTING STARTED ==================== -->
+<div class="slide slide-content-bg" id="slide4">
+  <h1 class="reveal">Getting Started</h1>
+  <div class="content-area">
+    <div class="subtitle reveal">AWS Builder Center Sandbox Setup</div>
+    <div class="intro-text reveal">You need a working sandbox before labs begin. No sandbox, no labs.</div>
+
+    <div class="step-row reveal">
+      <span class="step-number">1</span>
+      <div class="step-content">
+        <h4>What it is</h4>
+        <p>A temporary, isolated AWS account pre-configured with Bedrock model access and the permissions you need. No cost to you, no risk to production.</p>
+      </div>
+    </div>
+
+    <div class="step-row click-reveal">
+      <span class="step-number">2</span>
+      <div class="step-content">
+        <h4>How to access it</h4>
+        <p>Open the Workshop Studio link and sign in with your email. You'll get a dedicated AWS console session.</p>
+        <p><a href="https://catalog.us-east-1.prod.workshops.aws/workshops/cdbce152-b193-43df-8099-908ee2d1a6e4/en-US/aws-hosted">catalog.us-east-1.prod.workshops.aws/workshops/cdbce152-b193-43df-8099-908ee2d1a6e4</a></p>
+      </div>
+    </div>
+
+    <div class="step-row click-reveal">
+      <span class="step-number">3</span>
+      <div class="step-content">
+        <h4>Why it matters</h4>
+        <p>The labs call Bedrock APIs and deploy agent configurations. Without sandbox access, you'll be watching, not doing. Set this up during the break before labs start.</p>
+      </div>
+    </div>
+
+    <p class="click-hint reveal">Click to reveal steps</p>
+  </div>
+  <div class="footer reveal">
+    <span>Confidential</span>
+    <img src="assets/logo-small.png" alt="DoiT">
+  </div>
+  <div class="notes">
+    <p>This is the practical blocker. Emphasise it clearly.</p>
+    <p><strong>Step 1 — What it is:</strong> AWS Workshop Studio provides temporary sandbox accounts. They're fully isolated from EposNow's production environment. Pre-provisioned with Bedrock model access (Claude, Titan Embeddings), IAM roles for the lab exercises, and any supporting infrastructure (S3 buckets, sample data). They expire after the workshop — nothing persists.</p>
+    <p><strong>Step 2 — How to access:</strong> The URL goes to Workshop Studio. They'll need to:</p>
+    <ul>
+      <li>Click "Join workshop"</li>
+      <li>Enter the event access code (you'll provide this at lab time)</li>
+      <li>Sign in with their email (no AWS account required)</li>
+      <li>They'll land in a provisioned console with everything ready</li>
+    </ul>
+    <p>If anyone has corporate firewall issues accessing the URL, they should flag it now so we can troubleshoot during the break.</p>
+    <p><strong>Step 3 — Why it matters:</strong> Be blunt here. If they don't have sandbox access working, they cannot participate in the labs. It's not optional. The break between this intro and the labs is the time to get it sorted. We'll have people floating to help with access issues.</p>
+    <p>Suggest they bookmark the URL now, or open it in a tab, so they're ready to go when the break ends.</p>
+  </div>
+</div>
+
+<!-- ==================== SLIDE 5: WHAT'S NEXT ==================== -->
+<div class="slide slide-content-bg" id="slide5">
+  <h1 class="reveal">What's Next</h1>
+  <div class="content-area">
+    <div class="subtitle reveal">This afternoon's lab tracks</div>
+
+    <ul class="closing-list reveal">
+      <li><strong>Track 1: Bedrock</strong> — Model access, RAG with knowledge bases, prompt engineering with guardrails</li>
+      <li class="click-reveal"><strong>Track 2: AgentCore</strong> — Build a multi-step agent, connect tools, test orchestration workflows</li>
+      <li class="click-reveal"><strong>Format:</strong> Self-paced with facilitators. Work at your own speed. Ask questions freely.</li>
+      <li class="click-reveal"><strong>Expectations:</strong> Get stuck, that's the point. We're here to unblock you, not upsell you.</li>
+    </ul>
+
+    <div class="callout click-reveal">
+      <span class="callout-icon">🤝</span>
+      Questions during labs: raise a hand, post in the chat, or grab a facilitator. No question is too basic.
+    </div>
+    <p class="click-hint reveal">Click to reveal points</p>
+  </div>
+  <div class="footer reveal">
+    <span>Confidential</span>
+    <img src="assets/logo-small.png" alt="DoiT">
+  </div>
+  <div class="notes">
+    <p>Close with clarity on what happens next. No ambiguity.</p>
+    <p><strong>Lab tracks:</strong></p>
+    <ul>
+      <li>Bedrock track comes first. Everyone does this. You'll invoke models directly, set up a RAG pipeline with a knowledge base, and configure guardrails. This gives you the foundation.</li>
+      <li>AgentCore track follows. You'll build an agent that uses tools (Lambda functions acting as API integrations), chains multiple steps together, and handles conditional logic. This is where it gets interesting.</li>
+    </ul>
+    <p><strong>Format:</strong> These are self-paced labs with step-by-step instructions in the Workshop Studio environment. You're not racing anyone. Some of you will finish early and explore extensions; others will take the full time on the core exercises. Both are fine.</p>
+    <p><strong>Facilitators:</strong> We have people roaming specifically to help when you hit a wall. Don't sit stuck for 10 minutes staring at an error — flag it immediately. That's what we're here for.</p>
+    <p><strong>Tone check:</strong> This is not a sales pitch for managed services. This is hands-on time with tools that might be useful for EposNow's roadmap. You'll form your own opinions by the end of the afternoon. Our job is to make sure the environment works and the concepts land.</p>
+    <p>Any questions before we break? (Pause.) Right. Get your sandbox access sorted, grab a coffee, and we'll reconvene for labs in 15 minutes.</p>
+  </div>
+</div>
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+class SlidePresentation {
+  constructor() {
+    this.slides = document.querySelectorAll('.slide');
+    this.currentSlide = 0;
+    this.channel = new BroadcastChannel('presentation-sync');
+    this.isPresenterMode = false;
+    this.setupScaling();
+    this.setupNavigation();
+    this.setupProgressBar();
+    this.setupNavDots();
+    this.setupClock();
+    this.setupNotesControls();
+    this.setupClickReveal();
+    this.channel.onmessage = (event) => {
+      if (event.data.type === 'NAVIGATE' && event.data.slideIndex !== this.currentSlide) {
+        this.goToSlide(event.data.slideIndex, false);
+      }
+    };
+    this.goToSlide(0, false);
+  }
+  setupScaling() {
+    const resize = () => {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      document.documentElement.style.setProperty('--scale-factor', scale);
+    };
+    window.addEventListener('resize', resize);
+    resize();
+  }
+  setupNavigation() {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); this.nextSlide(); }
+      else if (e.key === ' ') { e.preventDefault(); this.revealNextOrAdvance(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); this.prevSlide(); }
+      else if (e.key.toLowerCase() === 's') { this.togglePresenterMode(); }
+    });
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+    document.addEventListener('touchend', e => {
+      const touchEndX = e.changedTouches[0].screenX;
+      if (touchStartX - touchEndX > 50) this.revealNextOrAdvance();
+      else if (touchEndX - touchStartX > 50) this.prevSlide();
+    });
+  }
+  setupClickReveal() {
+    document.querySelectorAll('.slide').forEach(slide => {
+      slide.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-dot') || e.target.closest('#speaker-notes-panel') || e.target.closest('.font-btn')) return;
+        this.revealNextInSlide(slide);
+      });
+    });
+  }
+  revealNextInSlide(slide) {
+    const hidden = slide.querySelectorAll('.click-reveal:not(.visible)');
+    if (hidden.length > 0) {
+      hidden[0].classList.add('visible');
+      if (hidden.length === 1) {
+        const hint = slide.querySelector('.click-hint');
+        if (hint) hint.style.display = 'none';
+      }
+    }
+  }
+  revealNextOrAdvance() {
+    const currentSlideEl = this.slides[this.currentSlide];
+    const hidden = currentSlideEl.querySelectorAll('.click-reveal:not(.visible)');
+    if (hidden.length > 0) {
+      hidden[0].classList.add('visible');
+      if (hidden.length === 1) {
+        const hint = currentSlideEl.querySelector('.click-hint');
+        if (hint) hint.style.display = 'none';
+      }
+    } else {
+      this.nextSlide();
+    }
+  }
+  togglePresenterMode() {
+    this.isPresenterMode = !this.isPresenterMode;
+    if (this.isPresenterMode) {
+      document.body.classList.add('presenter-mode');
+      this.updateSpeakerNotes();
+      if (this.startTimer) this.startTimer();
+    } else {
+      document.body.classList.remove('presenter-mode');
+    }
+  }
+  setupNotesControls() {
+    this.notesFontSize = 32;
+    const btnInc = document.getElementById('font-increase');
+    const btnDec = document.getElementById('font-decrease');
+    const content = document.getElementById('speaker-notes-content');
+    if (btnInc && btnDec && content) {
+      btnInc.addEventListener('click', () => {
+        this.notesFontSize += 4;
+        content.style.fontSize = this.notesFontSize + 'px';
+        content.querySelectorAll('ul').forEach(ul => ul.style.fontSize = this.notesFontSize + 'px');
+      });
+      btnDec.addEventListener('click', () => {
+        this.notesFontSize = Math.max(16, this.notesFontSize - 4);
+        content.style.fontSize = this.notesFontSize + 'px';
+        content.querySelectorAll('ul').forEach(ul => ul.style.fontSize = this.notesFontSize + 'px');
+      });
+    }
+  }
+  setupClock() {
+    setInterval(() => {
+      const now = new Date();
+      const clock = document.getElementById('clock');
+      if (clock) clock.innerText = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    }, 1000);
+    this.startTime = null;
+    this.timerInterval = null;
+    this.startTimer = () => {
+      if (!this.startTime) {
+        this.startTime = Date.now();
+        this.timerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+          const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+          const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+          const s = String(elapsed % 60).padStart(2, '0');
+          const timer = document.getElementById('timer');
+          if (timer) timer.innerText = h + ':' + m + ':' + s;
+        }, 1000);
+      }
+    };
+    const timerEl = document.getElementById('timer');
+    if (timerEl) {
+      timerEl.style.cursor = 'pointer';
+      timerEl.title = 'Click to reset timer';
+      timerEl.addEventListener('click', () => { this.startTime = Date.now(); timerEl.innerText = '00:00:00'; });
+    }
+  }
+  setupProgressBar() {
+    const bar = document.createElement('div');
+    bar.className = 'progress-bar';
+    document.body.appendChild(bar);
+    this.progressBar = bar;
+  }
+  setupNavDots() {
+    const dotsContainer = document.createElement('nav');
+    dotsContainer.className = 'nav-dots';
+    this.slides.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'nav-dot';
+      dot.addEventListener('click', () => this.goToSlide(i));
+      dotsContainer.appendChild(dot);
+    });
+    document.body.appendChild(dotsContainer);
+    this.dots = Array.from(dotsContainer.children);
+  }
+  updateSpeakerNotes() {
+    const notesContent = document.getElementById('speaker-notes-content');
+    if (!notesContent) return;
+    const activeSlide = this.slides[this.currentSlide];
+    const notesEl = activeSlide.querySelector('.notes');
+    if (notesEl) notesContent.innerHTML = notesEl.innerHTML;
+    else notesContent.innerHTML = '<p style="color:#666;font-style:italic;">No notes for this slide.</p>';
+  }
+  goToSlide(index, broadcast = true) {
+    if (index < 0 || index >= this.slides.length) return;
+    this.slides[this.currentSlide].classList.remove('active');
+    if (this.dots) this.dots[this.currentSlide].classList.remove('active');
+    this.currentSlide = index;
+    this.slides[this.currentSlide].classList.add('active');
+    if (this.dots) this.dots[this.currentSlide].classList.add('active');
+    if (this.progressBar) {
+      const progress = (this.currentSlide / (this.slides.length - 1)) * 100;
+      this.progressBar.style.width = progress + '%';
+    }
+    if (this.isPresenterMode) this.updateSpeakerNotes();
+    if (broadcast) this.channel.postMessage({ type: 'NAVIGATE', slideIndex: index });
+  }
+  nextSlide() { this.goToSlide(this.currentSlide + 1); }
+  prevSlide() { this.goToSlide(this.currentSlide - 1); }
+}
+new SlidePresentation();
+</script>
+</body>
+</html>
