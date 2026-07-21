@@ -59,9 +59,12 @@ Estimated cost if you forget to tear down for a week: £100-180.
 Notebooks can be run locally or in SageMaker Studio. Each notebook lists its prerequisites and estimated Bedrock token spend before running anything.
 
 ```bash
-pip install -r requirements.txt
-jupyter notebook notebooks/
+cd ~/git-repos/dataforai
+source .venv/bin/activate
+jupyter lab notebooks/
 ```
+
+If you haven't set up the virtual environment yet, see `SETUP.md` Step 2. JupyterLab opens in your browser with cell-by-cell execution. The notebooks use your `ridge-course-dev` AWS profile automatically; no extra authentication is needed beyond a working CLI profile.
 
 ---
 
