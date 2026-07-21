@@ -287,34 +287,31 @@ The intentional drift we built into the demo (250 products only in one store, 25
     <div class="accent-line"></div>
     <div class="two-col">
       <div class="card">
-        <div class="card-tag blue">Operational differences</div>
+        <div class="card-tag blue">Results: "lightweight tent for summer festivals"</div>
         <ul class="bullet-list" style="margin-top: 0;">
-          <li><strong>pgvector: instant writes</strong> — UPDATE a column, done. No index rebuild.</li>
-          <li><strong>OpenSearch: index planning upfront</strong> — knn must be enabled at index creation, not added later</li>
-          <li><strong>OpenSearch: slower ingestion</strong> — ANN structures take time to build after writes</li>
-          <li><strong>Drift is real</strong> — 1 product existed in Aurora but not OpenSearch</li>
+          <li><strong>BM25</strong> matched keywords: "Festival Hat", "Summer Liner", "Lightweight Tent" — only 1 of 5 was actually a tent</li>
+          <li><strong>pgvector</strong> found tents by meaning: Compact Tent, 2 Tent, 3 Tent — understood the intent</li>
+          <li><strong>OpenSearch knn</strong> also found tents: all 5 results were tents, different scoring order</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-tag green">Architecture implications</div>
+        <div class="card-tag green">Architecture observations</div>
         <ul class="bullet-list" style="margin-top: 0;">
-          <li><strong>Schema changes are harder in OpenSearch</strong> — can't add knn to an existing index</li>
-          <li><strong>pgvector is forgiving</strong> — add a column, backfill at your own pace</li>
-          <li><strong>Production: embed at ingestion time</strong> — don't bolt vectors on after the fact</li>
-          <li><strong>Consistency needs a pipeline</strong> — keeping both stores in sync is a real problem</li>
+          <li><strong>pgvector: instant writes</strong> — UPDATE a column, query immediately</li>
+          <li><strong>OpenSearch: plan upfront</strong> — knn must be enabled at index creation</li>
+          <li><strong>ANN takes time</strong> — had to wait for index structures to build</li>
+          <li><strong>Drift is real</strong> — Aurora-only products failed in OpenSearch</li>
         </ul>
       </div>
     </div>
-    <div class="callout">These aren't limitations to avoid. They're engineering decisions to make deliberately. The course progressively solves each one: zero-ETL for consistency, embedding pipelines for ingestion, index versioning for schema changes.</div>
-    <div class="notes">Quick wrap-up of what surfaced during the demo.
+    <div class="callout">BM25 found hats and liners because they contained "summer" or "festival". Vector search understood you wanted a <strong>tent</strong>. That's the difference between matching words and understanding meaning.</div>
+    <div class="notes">The results speak for themselves. When you search 'lightweight tent for summer festivals', BM25 fixates on the words 'summer', 'lightweight', and 'festival'. It returns a Festival Hat, Summer Liners, and only one actual tent. It matched keywords, not intent.
 
-First: pgvector is operationally simple. You add a vector column to your existing table, write embeddings with a standard UPDATE, and query immediately. No planning required. OpenSearch needs you to think about index design upfront. If you forget to enable knn when you create the index, you can't add it later. You have to create a new index and re-index your data.
+Both vector approaches understood you wanted a tent. pgvector returned 4 out of 5 tents. OpenSearch knn returned 5 out of 5 tents. They understood the meaning of the query even though the product names don't contain the word 'festival'.
 
-Second: ingestion speed. pgvector writes are instant because it's a regular PostgreSQL UPDATE. OpenSearch needs time after ingestion to build the ANN graph structures. In the demo we waited 5 seconds. In production with millions of vectors, this matters.
+The latency difference is also telling: BM25 at 613ms (cold OpenSearch), pgvector at 403ms, knn at 353ms. All acceptable for user-facing search, but the vector approaches were actually faster here because they're doing a simpler operation (nearest-neighbour lookup vs full-text scoring across 22k documents).
 
-Third: drift. We saw one product fail because it existed in Aurora but not in the main OpenSearch index. That's the intentional 250-product drift we built in. In production, this happens constantly: a product gets added to the database but the search index hasn't caught up yet. Solving this consistently is what zero-ETL integration and proper ingestion pipelines address later in the course.
-
-Fourth: schema changes. Adding vector search to OpenSearch means creating a new index with the right settings from day one, or doing a full re-index migration. pgvector lets you add and backfill incrementally. This matters when you're adding AI capabilities to an existing system rather than building greenfield.</div>
+On the architecture side: pgvector writes were instant. OpenSearch needed us to create a dedicated index with knn enabled upfront, then wait for the ANN structures to build after ingestion. And we hit the drift problem: 2 products existed in Aurora but not in the demo index. In production, you solve this with a proper ingestion pipeline that writes to both stores atomically.</div>
   </div>
 
 </div><!-- /deck -->
