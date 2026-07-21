@@ -99,22 +99,26 @@
     <div class="label">The landscape</div>
     <h2>Vector stores on AWS</h2>
     <div class="accent-line"></div>
-    <div class="four-col">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch;">
       <div class="card">
         <div class="card-tag blue">OpenSearch Serverless</div>
-        <p style="font-size: 0.95rem; line-height: 1.6;">Managed vector + keyword search. Hybrid queries built-in. Scale-to-zero (NextGen). No servers to manage.</p>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Purpose-built for search. Combines BM25 keyword matching with vector similarity in a single hybrid query. NextGen collections scale to zero when idle. Managed infrastructure, no patching or capacity planning.</p>
+        <p style="font-size: 0.85rem; line-height: 1.5; margin-top: 8px; color: var(--accent);">Best for: product discovery, catalogue search, user-facing queries</p>
       </div>
       <div class="card">
         <div class="card-tag green">Aurora pgvector</div>
-        <p style="font-size: 0.95rem; line-height: 1.6;">Extension on your existing PostgreSQL. Zero new services. Transactional consistency. Already deployed.</p>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Add vector search to your existing PostgreSQL database. No new service, no new billing dimension. Vectors live alongside structured data (price, stock, category). ACID transactions mean embeddings stay consistent with product updates.</p>
+        <p style="font-size: 0.85rem; line-height: 1.5; margin-top: 8px; color: var(--green);">Best for: similar-product lookups, small-medium catalogues, unified data model</p>
       </div>
       <div class="card">
         <div class="card-tag purple">S3 Vectors</div>
-        <p style="font-size: 0.95rem; line-height: 1.6;">Store vectors in S3. Pay per query. No infrastructure. Good for infrequent batch queries.</p>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Store and query vectors directly in S3. No infrastructure to provision. Pay only when you query. Latency is higher (not real-time), but cost approaches zero for infrequent use.</p>
+        <p style="font-size: 0.85rem; line-height: 1.5; margin-top: 8px; color: var(--accent2);">Best for: batch analytics, offline recommendations, archival similarity search</p>
       </div>
       <div class="card">
         <div class="card-tag orange">Bedrock Knowledge Bases</div>
-        <p style="font-size: 0.95rem; line-height: 1.6;">Fully managed RAG pipeline. Ingests documents, generates embeddings, stores and searches. Least control.</p>
+        <p style="font-size: 0.95rem; line-height: 1.6;">Fully managed end-to-end: point it at a document bucket, it handles chunking, embedding generation, storage, and retrieval. Least code, least control. Cannot customise chunking or scoring.</p>
+        <p style="font-size: 0.85rem; line-height: 1.5; margin-top: 8px; color: var(--orange);">Best for: policy documents, FAQs, internal knowledge where defaults are acceptable</p>
       </div>
     </div>
     <div class="notes">Four options. Each has a sweet spot.
