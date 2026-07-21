@@ -314,12 +314,41 @@ The latency difference is also telling: BM25 at 613ms (cold OpenSearch), pgvecto
 On the architecture side: pgvector writes were instant. OpenSearch needed us to create a dedicated index with knn enabled upfront, then wait for the ANN structures to build after ingestion. And we hit the drift problem: 2 products existed in Aurora but not in the demo index. In production, you solve this with a proper ingestion pipeline that writes to both stores atomically.</div>
   </div>
 
+  <!-- SLIDE 8: COMING UP -->
+  <div class="slide" id="s-coming-up">
+    <div class="label">Coming up</div>
+    <h2>Video 5: Vector Database Architecture</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">What you now know</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li><strong>Four vector store options</strong> on AWS and when to use each</li>
+          <li>BM25 matches words; vectors match <strong>meaning</strong></li>
+          <li>Meridian uses <strong>both</strong> OpenSearch and pgvector</li>
+          <li>Index design matters: <strong>knn must be planned upfront</strong></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag green">What's next</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li>How vector indexes <strong>actually work</strong> under the hood</li>
+          <li>HNSW vs IVF: <strong>speed vs accuracy</strong> trade-offs</li>
+          <li><strong>Sizing and capacity planning</strong> for 22k products</li>
+          <li>What happens when you <strong>scale to millions</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">You've seen vector search work. Next: understanding why it's fast, what the limits are, and how to plan capacity for production workloads.</div>
+    <div class="notes">You now have hands-on experience with two vector stores and you've seen the results. Next video goes deeper into how these indexes actually work. HNSW graphs, IVF indexes, the trade-off between recall accuracy and query speed. We'll also cover capacity planning: how much memory does 22,000 vectors need, what happens when you scale to millions, and when do you need to think about sharding. It's the architecture knowledge you need before putting this into production.</div>
+  </div>
+
 </div><!-- /deck -->
 
 
 <!-- PROGRESS + COUNTER -->
 <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
-<div class="counter" id="counter">1 / 7</div>
+<div class="counter" id="counter">1 / 8</div>
 
 <!-- NOTES open in separate window via N key -->
 <script>
