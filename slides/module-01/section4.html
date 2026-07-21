@@ -276,8 +276,45 @@ The intentional drift we built into the demo (250 products only in one store, 25
         </ul>
       </div>
     </div>
-    <div class="callout">Switching to the notebook now. Follow along in 03-vector-store-comparison.ipynb.</div>
+    <div class="callout">Switching to the notebook now. Follow along in 04-vector-store-comparison.ipynb.</div>
     <div class="notes">Time to switch to the notebook. We'll generate embeddings for a small sample of products, store them in both vector stores, and run the same natural language query against each. The point isn't which one is 'better' — it's seeing how the same vectors produce different results depending on the search algorithm. OpenSearch's hybrid scoring finds products that match both keywords AND meaning. pgvector's pure cosine similarity finds the semantically closest matches regardless of exact term overlap. Both are useful. Different tools for different jobs.</div>
+  </div>
+
+  <!-- SLIDE 7: WRAP-UP -->
+  <div class="slide" id="s-wrapup">
+    <div class="label">What we learned from the demo</div>
+    <h2>Real-world observations</h2>
+    <div class="accent-line"></div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag blue">Operational differences</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li><strong>pgvector: instant writes</strong> — UPDATE a column, done. No index rebuild.</li>
+          <li><strong>OpenSearch: index planning upfront</strong> — knn must be enabled at index creation, not added later</li>
+          <li><strong>OpenSearch: slower ingestion</strong> — ANN structures take time to build after writes</li>
+          <li><strong>Drift is real</strong> — 1 product existed in Aurora but not OpenSearch</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-tag green">Architecture implications</div>
+        <ul class="bullet-list" style="margin-top: 0;">
+          <li><strong>Schema changes are harder in OpenSearch</strong> — can't add knn to an existing index</li>
+          <li><strong>pgvector is forgiving</strong> — add a column, backfill at your own pace</li>
+          <li><strong>Production: embed at ingestion time</strong> — don't bolt vectors on after the fact</li>
+          <li><strong>Consistency needs a pipeline</strong> — keeping both stores in sync is a real problem</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">These aren't limitations to avoid. They're engineering decisions to make deliberately. The course progressively solves each one: zero-ETL for consistency, embedding pipelines for ingestion, index versioning for schema changes.</div>
+    <div class="notes">Quick wrap-up of what surfaced during the demo.
+
+First: pgvector is operationally simple. You add a vector column to your existing table, write embeddings with a standard UPDATE, and query immediately. No planning required. OpenSearch needs you to think about index design upfront. If you forget to enable knn when you create the index, you can't add it later. You have to create a new index and re-index your data.
+
+Second: ingestion speed. pgvector writes are instant because it's a regular PostgreSQL UPDATE. OpenSearch needs time after ingestion to build the ANN graph structures. In the demo we waited 5 seconds. In production with millions of vectors, this matters.
+
+Third: drift. We saw one product fail because it existed in Aurora but not in the main OpenSearch index. That's the intentional 250-product drift we built in. In production, this happens constantly: a product gets added to the database but the search index hasn't caught up yet. Solving this consistently is what zero-ETL integration and proper ingestion pipelines address later in the course.
+
+Fourth: schema changes. Adding vector search to OpenSearch means creating a new index with the right settings from day one, or doing a full re-index migration. pgvector lets you add and backfill incrementally. This matters when you're adding AI capabilities to an existing system rather than building greenfield.</div>
   </div>
 
 </div><!-- /deck -->
@@ -285,7 +322,7 @@ The intentional drift we built into the demo (250 products only in one store, 25
 
 <!-- PROGRESS + COUNTER -->
 <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
-<div class="counter" id="counter">1 / 6</div>
+<div class="counter" id="counter">1 / 7</div>
 
 <!-- NOTES open in separate window via N key -->
 <script>
